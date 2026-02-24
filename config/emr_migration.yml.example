@@ -1,0 +1,31 @@
+# OpenMRS Bulk Migration Configuration
+# ============================================================================
+# Copia este ficheiro para openmrs_migration.yml e preenche com as
+# credenciais do teu ambiente:
+#
+#   cp config/openmrs_migration.yml.example config/openmrs_migration.yml
+# ============================================================================
+
+# MySQL EMR Database
+emr_database:
+  host: localhost
+  port: 3306
+  username: root
+  password: YOUR_OPENMRS_PASSWORD
+  database: openmrs
+
+# Proxy Server (DDE)
+proxy:
+  protocol: http
+  host: 127.0.0.1
+  port: 8050
+  username: YOUR_PROXY_USERNAME
+  password: YOUR_PROXY_PASSWORD
+
+# Migration Settings
+migration:
+  batch_size: 100         # Número de pacientes por página (leitura do DB)
+  max_retries: 3          # Tentativas em caso de falha de rede
+  retry_delay: 2          # Base do backoff exponencial (segundos)
+  http_open_timeout: 10   # Timeout de conexão HTTP (segundos)
+  http_read_timeout: 30   # Timeout de leitura HTTP (segundos)
