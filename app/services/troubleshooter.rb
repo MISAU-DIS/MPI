@@ -104,11 +104,18 @@ class Troubleshooter
   end
 
   def remote_base_url
-    "#{protocol}://#{remote_host}/v1"
+    port = remote_port
+    host = port.present? ? "#{remote_host}:#{port}" : remote_host
+    "#{protocol}://#{host}/v1"
   end
 
   def protocol
     @config[:dde_sync_config][:protocol]
+  end
+
+  def local_base_url
+    cfg = @config[:dde_local_config]
+    "#{cfg[:protocol]}://#{cfg[:host]}:#{cfg[:port]}/v1"
   end
 
   # -----------------------------
@@ -182,7 +189,7 @@ class Troubleshooter
   end
 
   def authenticate_local(username, password)
-    url = "http://localhost:8050/v1/login?username=#{username}&password=#{password}"
+    url = "#{local_base_url}/login?username=#{username}&password=#{password}"
     response = begin
       RestClient.post(url, {})
     rescue StandardError
@@ -224,9 +231,9 @@ class Troubleshooter
     return { status: :error, message: 'Admin credentials missing' } unless admin_username && admin_password
 
     # Authenticate admin
-    login_url = "#{remote_base_url}/login"
+    login_url = "#{remote_base_url}/login?username=#{admin_username}&password=#{admin_password}"
     begin
-      login_resp = RestClient.post(login_url, { username: admin_username, password: admin_password })
+      login_resp = RestClient.post(login_url, {})
       token = JSON.parse(login_resp.body)['access_token']
     rescue StandardError => e
       return { status: :error, message: "Admin login failed: #{e.message}" }
@@ -234,7 +241,7 @@ class Troubleshooter
 
     # Update locally
     sync_user = User.find_by(username: sync_username)
-    if sync_user.exist?
+    if sync_user.present?
       sync_user.update(password: new_password)
     else
       User.create(username: sync_username,
