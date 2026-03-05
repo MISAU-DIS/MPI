@@ -186,7 +186,7 @@ class OpenMRSMigration
 
   def load_mysql_config
     config = load_config_file
-    raise "Secção 'openmrs' em falta em #{MIGRATION_CONFIG_FILE}" unless config['emr_database']
+    raise "Secção 'emr_database' em falta em #{MIGRATION_CONFIG_FILE}" unless config['emr_database']
 
     config['emr_database']
   end

@@ -8,7 +8,7 @@ require 'logger'
 require 'fileutils'
 
 # ============================================================================
-# EMRS NPID WRITE-BACK
+# EMRS NPID WRITE-BACK THIS WILL BE UPDATED WITH REAL PATIENT IDENTIFIERS
 # ============================================================================
 # Lê o mapeamento gerado pela migração (migration_mapping.csv) e insere
 # no OpenMRS dois patient_identifiers por paciente:
@@ -60,7 +60,7 @@ LOGGER.formatter = proc { |sev, dt, _, msg| "[#{dt.strftime('%Y-%m-%d %H:%M:%S')
 # CLI
 # ============================================================================
 DRY_RUN = ARGV.include?('--dry-run')
-LOGGER.info '*** MODO DRY-RUN — nenhum dado será escrito no OpenMRS ***' if DRY_RUN
+LOGGER.info '*** MODO DRY-RUN — nenhum dado será escrito no EMR-Database ***' if DRY_RUN
 
 # ============================================================================
 # HELPERS
