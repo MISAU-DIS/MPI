@@ -69,7 +69,166 @@ else
 end 
 
 return unless ENV['MASTER'] == 'true' # Do not add contraints if it is not a master
-  
+
+# -----------------------------
+# Seed Regions (Provinces)
+# -----------------------------
+require 'csv'
+
+puts "Seeding Provinces from CSV..."
+
+csv_path = Rails.root.join('db', 'seeds', 'regions_from_2025.csv')
+
+unless File.exist?(csv_path)
+  puts "CSV file not found at: #{csv_path}"
+  raise "Missing CSV file: #{csv_path}"
+end
+
+CSV.foreach(csv_path, headers: true) do |row|
+  name = row['provincia'] || row['name'] || row[0]
+  next if name.blank?
+
+  Province.find_or_create_by!(name: name.strip) do |p|
+    p.created_at = Time.current
+    p.updated_at = Time.current
+  end
+end
+
+puts "Provinces seeded into table `region` successfully"
+
+# -----------------------------
+# Seed Districts from CSV
+# -----------------------------
+require 'csv'
+
+puts "Seeding Districts from CSV..."
+
+csv_path = Rails.root.join('db', 'seeds', 'districts_from_2025.csv')
+
+unless File.exist?(csv_path)
+  puts "CSV file not found at: #{csv_path}"
+  raise "Missing CSV file: #{csv_path}"
+end
+
+# Criar índice das provinces existentes na tabela `region`
+province_index = Province.all.each_with_object({}) do |prov, h|
+  h[prov.name.strip] = prov.region_id
+end
+
+created = 0
+skipped = 0
+
+CSV.foreach(csv_path, headers: true) do |row|
+  province_name = row['provincia']&.strip
+  district_name = row['distrito']&.strip
+
+  next if province_name.blank? || district_name.blank?
+
+  region_id = province_index[province_name]
+
+  if region_id.nil?
+    puts "⚠ Province not found: #{province_name}"
+    skipped += 1
+    next
+  end
+
+  District.find_or_create_by!(name: district_name, region_id: region_id)
+  created += 1
+end
+
+puts "Districts seeded successfully. Created/ensured: #{created}, Skipped: #{skipped}"
+
+# -----------------------------
+# Seed Locations (Facilities) from CSV (2025)
+# -----------------------------
+require 'csv'
+
+puts "Seeding Locations from CSV..."
+
+csv_path = Rails.root.join('db', 'seeds', 'locations_from_2025.csv')
+raise "Missing CSV file: #{csv_path}" unless File.exist?(csv_path)
+
+creator_id = (ENV['SEED_CREATOR_ID'] || 1).to_i
+
+# Provinces index (table `region`)
+province_index = Province.all.each_with_object({}) do |prov, h|
+  h[prov.name.to_s.strip.upcase] = prov.region_id
+end
+
+# District index: (region_id + district_name) -> district_id
+district_index = District.all.each_with_object({}) do |d, h|
+  key = "#{d.region_id}|#{d.name.to_s.strip.upcase}"
+  h[key] = d.district_id
+end
+
+created = 0
+updated = 0
+skipped = 0
+
+CSV.foreach(csv_path, headers: true) do |row|
+  code          = row['codigo']&.strip
+  name          = row['unidade_sanitaria']&.strip
+  provincia     = row['provincia']&.strip
+  distrito      = row['distrito']&.strip
+  latitude      = row['latitude']&.strip
+  longitude     = row['longitude']&.strip
+
+  tipo          = row['tipo']&.strip
+  tipo_de_us    = row['tipo_de_us']&.strip
+  nivel         = row['nivel']&.strip
+  classificacao = row['classificacao']&.strip
+  maternidade   = row['maternidade_sn']&.strip
+
+  next if code.blank? || name.blank? || provincia.blank? || distrito.blank?
+
+  region_id = province_index[provincia.upcase]
+  if region_id.nil?
+    puts "⚠ Province not found in `region`: #{provincia} (code=#{code}, name=#{name})"
+    skipped += 1
+    next
+  end
+
+  district_id = district_index["#{region_id}|#{distrito.upcase}"]
+  if district_id.nil?
+    puts "⚠ District not found: #{provincia} / #{distrito} (code=#{code}, name=#{name})"
+    skipped += 1
+    next
+  end
+
+  # guarda detalhes extras no description (opcional)
+  desc_parts = []
+  desc_parts << "tipo=#{tipo}" if tipo.present?
+  desc_parts << "tipo_de_us=#{tipo_de_us}" if tipo_de_us.present?
+  desc_parts << "nivel=#{nivel}" if nivel.present?
+  desc_parts << "classificacao=#{classificacao}" if classificacao.present?
+  desc_parts << "maternidade_sn=#{maternidade}" if maternidade.present?
+  description = desc_parts.any? ? desc_parts.join(' | ') : nil
+
+  # Estratégia de dedupe: code é o melhor identificador
+  loc = Location.find_or_initialize_by(code: code)
+  is_new = loc.new_record?
+
+  loc.name        = name
+  loc.district_id = district_id
+  loc.creator     = creator_id
+  loc.voided      = 0 if loc.voided.nil?
+
+  # latitude/longitude na tua tabela são varchar, então pode salvar string
+  loc.latitude    = latitude if latitude.present?
+  loc.longitude   = longitude if longitude.present?
+
+  loc.description = description if description.present?
+
+  loc.created_at ||= Time.current
+  loc.updated_at  = Time.current
+
+  loc.save!
+
+  is_new ? created += 1 : updated += 1
+end
+
+puts "Locations seeded. Created: #{created}, Updated: #{updated}, Skipped: #{skipped}"
+
 # === Add foreign key constraints ===
 connection = ActiveRecord::Base.connection
 
