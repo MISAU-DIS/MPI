@@ -121,6 +121,16 @@ paths:
                       type: string
                     occupation:
                       type: string
+                    provincia:
+                      type: string
+                    distrito:
+                      type: string
+                    bairro:
+                      type: string
+                    localidade:
+                      type: string
+                    ponto_de_referencia:
+                      type: string
                 identifiers:
                   type: object
                   properties:
@@ -132,10 +142,6 @@ paths:
               - gender
               - birthdate
               - birthdate_estimated
-              - attributes
-              - home_district
-              - home_village
-              - home_traditional_authority
   "/v1/search_by_name_and_gender":
     post:
       summary: search_by_name_and_gender people_detail
@@ -257,6 +263,16 @@ paths:
                     home_traditional_authority:
                       type: string
                     occupation:
+                      type: string
+                    provincia:
+                      type: string
+                    distrito:
+                      type: string
+                    bairro:
+                      type: string
+                    localidade:
+                      type: string
+                    ponto_de_referencia:
                       type: string
                 npid:
                   type: string
