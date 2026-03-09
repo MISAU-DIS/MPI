@@ -115,7 +115,7 @@ module PersonService
       npid.update(assigned: true)
     end
 
-    return self.after_create_get_person_obj(person, params[:attributes])
+    return self.after_create_get_person_obj(person, params[:attributes] || {})
   end
 
   def self.after_create_get_person_obj(person, params)

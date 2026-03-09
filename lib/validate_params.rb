@@ -7,13 +7,6 @@ module ValidateParams
     missing_parameters << "birthdate" if params[:birthdate].blank?
     missing_parameters << "birthdate_estimated" if params[:birthdate_estimated].blank?
 
-    unless params[:attributes].blank?
-      missing_parameters << "home_district" if params[:attributes][:home_district].blank?
-      missing_parameters << "home_village" if params[:attributes][:home_village].blank?
-      missing_parameters << "home_traditional_authority" if params[:attributes][:home_traditional_authority].blank?
-    else
-      missing_parameters << "attributes"
-    end
 
     return [] if missing_parameters.blank?
     return {status: 400, message: "Missing the following parameters: #{missing_parameters.join(', ')}"}
