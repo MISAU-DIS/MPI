@@ -352,6 +352,52 @@ module PersonService
     return people_arr
   end
 
+  def self.search_person(params)
+    npid       = params[:npid]
+    identifier = params[:identifier]
+    given_name = params[:given_name]
+    family_name = params[:family_name]
+    gender     = params[:gender]
+
+    # 1º prioridade: NPID
+    if npid.present?
+      return self.search_by_npid(params)
+    end
+
+    # 2º prioridade: documento
+    if identifier.present? && identifier[:type].present? && identifier[:value].present?
+      identifier_type = PersonIdentifierType.find_by_code(identifier[:type])
+      return [] if identifier_type.blank?
+
+      person_ids = PersonIdentifier.active
+        .where(person_identifier_type_id: identifier_type.id, identifier_value: identifier[:value])
+        .pluck(:person_detail_id)
+
+      people = PersonDetail.where(id: person_ids)
+      return people.map { |p| self.get_person_obj(p) }
+    end
+
+    # 3º prioridade: nome (com filtro opcional por documento)
+    if given_name.present? && family_name.present?
+      query = PersonDetail.where("first_name = ? AND last_name = ?", given_name, family_name)
+      query = query.where(gender: gender) if gender.present?
+
+      if identifier.present? && identifier[:type].present? && identifier[:value].present?
+        identifier_type = PersonIdentifierType.find_by_code(identifier[:type])
+        unless identifier_type.blank?
+          person_ids = PersonIdentifier.active
+            .where(person_identifier_type_id: identifier_type.id, identifier_value: identifier[:value])
+            .pluck(:person_detail_id)
+          query = query.where(id: person_ids)
+        end
+      end
+
+      return query.limit(10).map { |p| self.get_person_obj(p) }
+    end
+
+    []
+  end
+
   def self.search_by_npid(params)
     npid = params[:npid]
     doc_id = params[:doc_id]

@@ -153,6 +153,45 @@ paths:
               - gender
               - birthdate
               - birthdate_estimated
+  "/v1/search_person":
+    post:
+      summary: Pesquisa unificada de paciente
+      tags:
+      - Person
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                npid:
+                  type: string
+                  description: "NPID do paciente"
+                given_name:
+                  type: string
+                family_name:
+                  type: string
+                gender:
+                  type: string
+                identifier:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      description: "Código do tipo (ex: BI, PASSAPORTE, NUIT)"
+                    value:
+                      type: string
+                      description: "Número do documento"
+      responses:
+        '200':
+          description: Paciente(s) encontrado(s)
+        '404':
+          description: Nenhum resultado encontrado
   "/v1/search_by_name_and_gender":
     post:
       summary: search_by_name_and_gender people_detail

@@ -43,6 +43,11 @@ class Api::V1::PeopleDetailsController < ApplicationController
   end
 
  #Search by name and gender
+ def search_person
+    results = PersonService.search_person(params)
+    render json: results, status: results.blank? ? :not_found : :ok
+  end
+
  def search_by_name_and_gender
     errors = ValidateParams.search_by_name_and_gender(params)
     if errors.blank?
