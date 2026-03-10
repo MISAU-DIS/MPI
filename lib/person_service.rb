@@ -124,6 +124,7 @@ module PersonService
       # NpidService.assign_npid(person)
       # #####################
       npid.update(assigned: true)
+      PersonIdentifierService.create(person, params[:person_identifiers])
     end
 
     return self.after_create_get_person_obj(person, params[:attributes] || {})
@@ -156,8 +157,9 @@ module PersonService
       identifiers: {
         art_number: params[:art_number],
         htn_number: params[:htn_number],
-        national_id:  person.national_id,
+        national_id: person.national_id,
       },
+      person_identifiers: PersonIdentifierService.for_person(person),
       npid: person.npid,
       doc_id: person.person_uuid
     }

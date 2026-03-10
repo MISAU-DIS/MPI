@@ -15,6 +15,7 @@ module MergeService
 
     ActiveRecord::Base.transaction do
       person = JSON.parse(audit_record.to_json)
+      PersonIdentifierService.transfer(secondary_person, primary_person)
       secondary_person.voided = 1
       secondary_person.voided_by = current_user.id
       secondary_person.date_voided = Time.now

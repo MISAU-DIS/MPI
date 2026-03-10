@@ -136,6 +136,17 @@ paths:
                   properties:
                     national_id:
                       type: string
+                person_identifiers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: "Código do tipo (ex: BI, PASSAPORTE, NUIT)"
+                      value:
+                        type: string
+                        description: "Número do documento"
               required:
               - given_name
               - family_name
@@ -274,6 +285,17 @@ paths:
                       type: string
                     ponto_de_referencia:
                       type: string
+                person_identifiers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: "Código do tipo (ex: BI, PASSAPORTE, NUIT)"
+                      value:
+                        type: string
+                        description: "Número do documento"
                 npid:
                   type: string
                 national_id:
