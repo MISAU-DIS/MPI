@@ -5,7 +5,7 @@ module ValidateParams
     missing_parameters << "family_name" if params[:family_name].blank?
     missing_parameters << "gender" if params[:gender].blank?
     missing_parameters << "birthdate" if params[:birthdate].blank?
-    missing_parameters << "birthdate_estimated" if params[:birthdate_estimated].blank?
+    missing_parameters << "birthdate_estimated" if params[:birthdate_estimated].nil?
 
 
     return [] if missing_parameters.blank?
