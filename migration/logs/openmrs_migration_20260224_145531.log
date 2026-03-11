@@ -1,0 +1,52 @@
+[2026-02-24 14:55:31] INFO: ╔==========================================================╗
+[2026-02-24 14:55:31] INFO: ║  OpenMRS Bulk Migration to Proxy                      ║
+[2026-02-24 14:55:31] INFO: ╚==========================================================╝
+[2026-02-24 14:55:31] INFO: ↩ Retomando: 30 paciente(s) já migrados anteriormente serão ignorados.
+[2026-02-24 14:55:31] INFO: Token expirado ou ausente — re-autenticando...
+[2026-02-24 14:55:31] INFO: Autenticando no Proxy (127.0.0.1:8050)...
+[2026-02-24 14:55:32] INFO: ✓ Autenticação bem-sucedida (token válido por ~60min)
+[2026-02-24 14:55:32] INFO: Total de pacientes activos no DB (elegíveis): 21102
+[2026-02-24 14:55:32] WARN: ⚠ Descartado person_id=431 | Campos em falta: home_village
+[2026-02-24 14:55:32] WARN: ⚠ Descartado person_id=456 | Campos em falta: home_traditional_authority
+[2026-02-24 14:55:32] WARN: ⚠ Descartado person_id=476 | Campos em falta: home_village
+[2026-02-24 14:55:32] INFO: 
+--- Batch 1 | 67 paciente(s) a enviar ---
+[2026-02-24 14:55:32] INFO: ✓ [1/21102] person_id=443 (NPID: JN8W86)
+[2026-02-24 14:55:32] INFO: ✓ [2/21102] person_id=444 (NPID: 66MPP2)
+[2026-02-24 14:55:32] INFO: ✓ [3/21102] person_id=445 (NPID: T1W536)
+[2026-02-24 14:55:32] INFO: ✓ [4/21102] person_id=446 (NPID: 41PEM0)
+[2026-02-24 14:55:32] INFO: ✓ [5/21102] person_id=447 (NPID: TY1UM8)
+[2026-02-24 14:55:32] INFO: ✓ [6/21102] person_id=448 (NPID: 4PVARX)
+[2026-02-24 14:55:32] INFO: ✓ [7/21102] person_id=449 (NPID: VK363M)
+[2026-02-24 14:55:32] INFO: ✓ [8/21102] person_id=450 (NPID: WT2N2W)
+[2026-02-24 14:55:32] INFO: ✓ [9/21102] person_id=451 (NPID: AKMTVE)
+[2026-02-24 14:55:32] INFO: ✓ [10/21102] person_id=452 (NPID: DXF5G7)
+[2026-02-24 14:55:32] INFO: ✓ [11/21102] person_id=453 (NPID: HUFEWH)
+[2026-02-24 14:55:32] INFO: ✓ [12/21102] person_id=454 (NPID: WJ3UDM)
+[2026-02-24 14:55:32] INFO: ✓ [13/21102] person_id=455 (NPID: DFEXFM)
+[2026-02-24 14:55:32] INFO: ✓ [14/21102] person_id=457 (NPID: E4F4VA)
+[2026-02-24 14:55:33] INFO: ✓ [15/21102] person_id=458 (NPID: 8MA4YW)
+[2026-02-24 14:55:33] INFO: ✓ [16/21102] person_id=459 (NPID: R2UNTH)
+[2026-02-24 14:55:33] INFO: ✓ [17/21102] person_id=460 (NPID: KKRY50)
+[2026-02-24 14:55:33] INFO: ✓ [18/21102] person_id=461 (NPID: CWLNUP)
+[2026-02-24 14:55:33] ERROR: 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[2026-02-24 14:55:33] ERROR: PARAGEM DE EMERGÊNCIA: Proxy sem NPIDs disponíveis. Reabasteça o stock e retome com: ruby emr_bulk_migration.rb
+[2026-02-24 14:55:33] ERROR: Migrados até agora: 18 paciente(s)
+[2026-02-24 14:55:33] ERROR: O progresso foi guardado. Retome com: ruby emr_bulk_migration.rb
+[2026-02-24 14:55:33] ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[2026-02-24 14:55:33] INFO: 
+############################################################
+[2026-02-24 14:55:33] INFO: # RESUMO DA MIGRAÇÃO
+[2026-02-24 14:55:33] INFO: ############################################################
+[2026-02-24 14:55:33] INFO: Database:             namialo
+[2026-02-24 14:55:33] INFO: Modo:                 PRODUÇÃO
+[2026-02-24 14:55:33] INFO: Pacientes migrados:   18
+[2026-02-24 14:55:33] INFO: Descartados:          3
+[2026-02-24 14:55:33] INFO: Erros de envio:       0
+[2026-02-24 14:55:33] INFO: Taxa de sucesso:      100.0%
+[2026-02-24 14:55:33] INFO: Log principal:        /home/matcha/eclipse-workspace/dde/migration/logs/openmrs_migration_20260224_145531.log
+[2026-02-24 14:55:33] INFO: Mapeamento (NPID):    /home/matcha/eclipse-workspace/dde/migration/data/migration_mapping.csv
+[2026-02-24 14:55:33] INFO: Registos descartados: /home/matcha/eclipse-workspace/dde/migration/logs/discarded_records.jsonl
+[2026-02-24 14:55:33] INFO: 📋 Relatório gerado: /home/matcha/eclipse-workspace/dde/migration/reports/nao_migrados_20260224_145533.csv (6 registos)
+[2026-02-24 14:55:33] INFO: ############################################################
