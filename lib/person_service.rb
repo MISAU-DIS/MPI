@@ -275,9 +275,15 @@ module PersonService
           current_village: person.home_village,
           home_district: person.ancestry_district,
           home_traditional_authority: person.ancestry_ta,
-          home_village: person.ancestry_village
+          home_village: person.ancestry_village,
+          provincia: person.provincia,
+          distrito: person.distrito,
+          bairro: person.bairro,
+          localidade: person.localidade,
+          ponto_de_referencia: person.ponto_de_referencia
         },
           # identifiers: self.get_identifiers(person),
+          person_identifiers: PersonIdentifierService.for_person(person),
           npid: person.npid,
           national_id:  person.national_id,
           doc_id: person.person_uuid
