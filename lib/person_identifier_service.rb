@@ -48,4 +48,36 @@ module PersonIdentifierService
       end
   end
 
+  # Idempotent sync — used during synchronization between satellite and master.
+  # Accepts array of hashes with string or symbol keys: [{ 'type' => 'BI', 'value' => '123' }]
+  # Does not delete existing identifiers, only adds missing ones.
+  def self.sync(person_detail, identifiers_params)
+    return if identifiers_params.blank?
+
+    identifiers_params.each do |identifier|
+      type_code = identifier[:type] || identifier['type']
+      value     = identifier[:value] || identifier['value']
+      next if type_code.blank?
+
+      identifier_type = PersonIdentifierType.find_by_code(type_code)
+      next if identifier_type.blank?
+
+      sem_documento = identifier_type.code == 'SEM_DOCUMENTO'
+      next if !sem_documento && value.blank?
+
+      next if PersonIdentifier.exists?(
+        person_detail_id:          person_detail.id,
+        person_identifier_type_id: identifier_type.id,
+        voided:                    false
+      )
+
+      PersonIdentifier.create!(
+        person_detail_id:          person_detail.id,
+        person_identifier_type_id: identifier_type.id,
+        identifier_value:          sem_documento ? nil : value,
+        voided:                    false
+      )
+    end
+  end
+
 end
