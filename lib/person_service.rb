@@ -221,6 +221,8 @@ module PersonService
       audit_person.delete('id')
       audit_person.delete('updated_at')
       PersonDetailsAudit.create!(audit_person)
+      PersonIdentifierService.update(person, params[:person_identifiers])
+      nil
     end
   end
 
