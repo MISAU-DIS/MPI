@@ -163,6 +163,20 @@ paths:
         in: header
         schema:
           type: string
+      - name: page
+        in: query
+        description: "Página (default: 1)"
+        required: false
+        schema:
+          type: integer
+          example: 1
+      - name: per_page
+        in: query
+        description: "Resultados por página (default: 25, máx: 100)"
+        required: false
+        schema:
+          type: integer
+          example: 25
       requestBody:
         content:
           application/json:
@@ -190,35 +204,83 @@ paths:
       responses:
         '200':
           description: Paciente(s) encontrado(s)
-        '404':
-          description: Nenhum resultado encontrado
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+              description: Total de registos encontrados
+            X-Page:
+              schema:
+                type: integer
+              description: Página actual
+            X-Per-Page:
+              schema:
+                type: integer
+              description: Resultados por página
+            X-Total-Pages:
+              schema:
+                type: integer
+              description: Total de páginas
   "/v1/search_by_name_and_gender":
     post:
       summary: search_by_name_and_gender people_detail
       tags:
       - Person
       parameters:
-      - name: given_name
-        in: query
-        description: given_name
-        required: true
+      - name: Authorization
+        in: header
         schema:
           type: string
-      - name: family_name
+      - name: page
         in: query
-        description: family_name
-        required: true
+        description: "Página (default: 1)"
+        required: false
         schema:
-          type: string
-      - name: gender
+          type: integer
+          example: 1
+      - name: per_page
         in: query
-        description: gender
-        required: true
+        description: "Resultados por página (default: 25, máx: 100)"
+        required: false
         schema:
-          type: string
+          type: integer
+          example: 25
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - given_name
+                - family_name
+                - gender
+              properties:
+                given_name:
+                  type: string
+                family_name:
+                  type: string
+                gender:
+                  type: string
       responses:
         '200':
-          description: successful
+          description: Paciente(s) encontrado(s)
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+              description: Total de registos encontrados
+            X-Page:
+              schema:
+                type: integer
+              description: Página actual
+            X-Per-Page:
+              schema:
+                type: integer
+              description: Resultados por página
+            X-Total-Pages:
+              schema:
+                type: integer
+              description: Total de páginas
   "/v1/search_by_npid":
     post:
       summary: search_by_npid people_detail
