@@ -36,10 +36,22 @@ WRITEBACK_LOG  = "#{LOGS_DIR}/npid_writeback_#{Time.now.strftime('%Y%m%d_%H%M%S'
 
 CONFIG_FILE    = "#{DDE_ROOT}/config/emr_migration.yml"
 
-NPID_IDENTIFIER_TYPE   =  3    # NPID
-DOC_ID_IDENTIFIER_TYPE = 18   # DDE doc_id (UUID do proxy)
-LOCATION_ID            = 319
-BATCH_SIZE             = 500
+def load_writeback_config
+  config = YAML.load(File.read(CONFIG_FILE), aliases: true)
+  wb = config['writeback'] || {}
+  {
+    location_id:            (wb['location_id']            || raise("'writeback.location_id' em falta em #{CONFIG_FILE}")).to_i,
+    npid_identifier_type:   (wb['npid_identifier_type']   || raise("'writeback.npid_identifier_type' em falta em #{CONFIG_FILE}")).to_i,
+    doc_id_identifier_type: (wb['doc_id_identifier_type'] || raise("'writeback.doc_id_identifier_type' em falta em #{CONFIG_FILE}")).to_i,
+    batch_size:             (wb['batch_size'] || 500).to_i
+  }
+end
+
+WB_CONFIG              = load_writeback_config
+NPID_IDENTIFIER_TYPE   = WB_CONFIG[:npid_identifier_type]
+DOC_ID_IDENTIFIER_TYPE = WB_CONFIG[:doc_id_identifier_type]
+LOCATION_ID            = WB_CONFIG[:location_id]
+BATCH_SIZE             = WB_CONFIG[:batch_size]
 
 # ============================================================================
 # LOGGING

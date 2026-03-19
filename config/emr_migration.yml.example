@@ -29,3 +29,10 @@ migration:
   retry_delay: 2          # Base do backoff exponencial (segundos)
   http_open_timeout: 10   # Timeout de conexão HTTP (segundos)
   http_read_timeout: 30   # Timeout de leitura HTTP (segundos)
+
+# Write-Back Settings (NPID → EMR)
+writeback:
+  location_id: 319                # ID da localização no OpenMRS/SIS-RME
+  npid_identifier_type: 3         # patient_identifier_type.patient_identifier_type_id para NPID
+  doc_id_identifier_type: 18      # patient_identifier_type.patient_identifier_type_id para doc_id (UUID do proxy)
+  batch_size: 500                 # Número de registos por batch de inserção

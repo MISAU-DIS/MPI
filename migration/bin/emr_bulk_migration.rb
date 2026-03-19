@@ -98,9 +98,6 @@ class OpenMRSMigration
     family_name
     birthdate
     birthdate_estimated
-    home_district
-    home_village
-    home_traditional_authority
   ].freeze
 
   class NoNpidsAvailable < StandardError; end
@@ -275,11 +272,12 @@ class OpenMRSMigration
   end
 
   def fetch_patients_page(conn, last_id, limit)
-    # Mapeamento de endereços (Moçambique):
-    #   county_district → home_district              (Distrito)
-    #   address2        → home_traditional_authority  (Posto Administrativo)
-    #   address6        → home_village                (Localidade)
-    #   state_province  → current_district            (Província)
+    # Mapeamento de endereços (Moçambique / SIS-RME):
+    #   state_province  → provincia          (Província)
+    #   county_district → distrito           (Distrito)
+    #   address2        → bairro             (Bairro)
+    #   address6        → localidade         (Localidade)
+    #   address1        → ponto_de_referencia
     #
     # Usa subqueries para garantir exactamente 1 endereço e 1 nome por paciente
     # (o mais antigo não-voided por min ID), evitando duplicação de registos.
@@ -292,12 +290,11 @@ class OpenMRSMigration
         pn.given_name,
         pn.middle_name,
         pn.family_name,
-        COALESCE(pad3.county_district, 'Desconhecido') AS home_district,
-        COALESCE(pad3.address2, 'Desconhecido')        AS home_traditional_authority,
-        COALESCE(pad3.address6, 'Desconhecido')        AS home_village,
-        pad3.state_province   AS current_district,
-        pad3.address2         AS current_traditional_authority,
-        pad3.address1         AS current_village
+        pad3.state_province   AS provincia,
+        pad3.county_district  AS distrito,
+        pad3.address2         AS bairro,
+        pad3.address6         AS localidade,
+        pad3.address1         AS ponto_de_referencia
       FROM patient pt
       INNER JOIN person p ON p.person_id = pt.patient_id AND p.voided = #{VOIDED}
       LEFT JOIN (
@@ -369,13 +366,11 @@ class OpenMRSMigration
       birthdate:            patient['birthdate']&.to_s || '',
       birthdate_estimated:  (patient['birthdate_estimated'].to_i == 1).to_s,
       attributes: {
-        current_district:              patient['current_district'].to_s.strip,
-        current_village:               patient['current_village'].to_s.strip,
-        current_traditional_authority: patient['current_traditional_authority'].to_s.strip,
-        home_district:                 patient['home_district'].to_s.strip,
-        home_village:                  patient['home_village'].to_s.strip,
-        home_traditional_authority:    patient['home_traditional_authority'].to_s.strip,
-        occupation:                    patient['occupation'].to_s.strip
+        provincia:           patient['provincia'].to_s.strip,
+        distrito:            patient['distrito'].to_s.strip,
+        bairro:              patient['bairro'].to_s.strip,
+        localidade:          patient['localidade'].to_s.strip,
+        ponto_de_referencia: patient['ponto_de_referencia'].to_s.strip
       }
     }
   end
