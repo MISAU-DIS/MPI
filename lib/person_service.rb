@@ -348,7 +348,7 @@ module PersonService
     last_name  = params[:family_name]
     gender     = params[:gender]
     page     = [params[:page].to_i, 1].max
-    per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 25
+    per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 10
 
     query  = PersonDetail.where("first_name LIKE ? AND last_name LIKE ? AND gender = ?", "#{first_name}%", "#{last_name}%", gender)
     total  = query.count
@@ -367,26 +367,26 @@ module PersonService
     # 1º prioridade: NPID
     if npid.present?
       data = self.search_by_npid(params)
-      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 25 }
+      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 10 }
     end
 
     # 2º prioridade: documento
     if identifier.present? && identifier[:type].present? && identifier[:value].present?
       identifier_type = PersonIdentifierType.find_by_code(identifier[:type])
-      return { data: [], total: 0, page: 1, per_page: 25 } if identifier_type.blank?
+      return { data: [], total: 0, page: 1, per_page: 10 } if identifier_type.blank?
 
       person_ids = PersonIdentifier.active
         .where(person_identifier_type_id: identifier_type.id, identifier_value: identifier[:value])
         .pluck(:person_detail_id)
 
       data = PersonDetail.where(id: person_ids).map { |p| self.get_person_obj(p) }
-      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 25 }
+      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 10 }
     end
 
     # 3º prioridade: nome (com filtro opcional por documento)
     if given_name.present? && family_name.present?
       page     = [params[:page].to_i, 1].max
-      per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 25
+      per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 10
 
       query = PersonDetail.where("first_name LIKE ? AND last_name LIKE ?", "#{given_name}%", "#{family_name}%")
       query = query.where(gender: gender) if gender.present?
@@ -406,7 +406,7 @@ module PersonService
       return { data: data, total: total, page: page, per_page: per_page }
     end
 
-    { data: [], total: 0, page: 1, per_page: 25 }
+    { data: [], total: 0, page: 1, per_page: 10 }
   end
 
   def self.search_by_npid(params)
