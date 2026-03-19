@@ -222,8 +222,9 @@ module PersonService
       audit_person.delete('updated_at')
       PersonDetailsAudit.create!(audit_person)
       PersonIdentifierService.update(person, params[:person_identifiers])
-      nil
     end
+
+    self.get_person_obj(person.reload)
   end
 
   def self.potential_duplicates(params)
@@ -343,21 +344,17 @@ module PersonService
   end
 
   def self.search_by_name_and_gender(params)
-    first_name  = params[:given_name]
-    last_name = params[:family_name]
-    gender      = params[:gender]
+    first_name = params[:given_name]
+    last_name  = params[:family_name]
+    gender     = params[:gender]
+    page     = [params[:page].to_i, 1].max
+    per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 25
 
-    people = PersonDetail.where(["first_name = ?
-      AND last_name = ? AND gender = ?",
-      first_name, last_name, gender]).limit(10)
+    query  = PersonDetail.where("first_name LIKE ? AND last_name LIKE ? AND gender = ?", "#{first_name}%", "#{last_name}%", gender)
+    total  = query.count
+    people = query.offset((page - 1) * per_page).limit(per_page)
 
-    people_arr = []
-
-    (people || []).each do |person|
-      people_arr << self.get_person_obj(person)
-    end
-
-    return people_arr
+    { data: people.map { |p| self.get_person_obj(p) }, total: total, page: page, per_page: per_page }
   end
 
   def self.search_person(params)
@@ -387,7 +384,10 @@ module PersonService
 
     # 3º prioridade: nome (com filtro opcional por documento)
     if given_name.present? && family_name.present?
-      query = PersonDetail.where("first_name = ? AND last_name = ?", given_name, family_name)
+      page     = [params[:page].to_i, 1].max
+      per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 25
+
+      query = PersonDetail.where("first_name LIKE ? AND last_name LIKE ?", "#{given_name}%", "#{family_name}%")
       query = query.where(gender: gender) if gender.present?
 
       if identifier.present? && identifier[:type].present? && identifier[:value].present?
@@ -400,10 +400,12 @@ module PersonService
         end
       end
 
-      return query.limit(10).map { |p| self.get_person_obj(p) }
+      total = query.count
+      data  = query.offset((page - 1) * per_page).limit(per_page).map { |p| self.get_person_obj(p) }
+      return { data: data, total: total, page: page, per_page: per_page }
     end
 
-    []
+    { data: [], total: 0, page: 1, per_page: 25 }
   end
 
   def self.search_by_npid(params)
