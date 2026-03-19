@@ -427,6 +427,7 @@ module PersonService
         #npid, npid).joins("RIGHT JOIN person_attributes p
       #ON p.couchdb_person_id = people.couchdb_person_id").select("people.*")
       people = []
+      person = []
 
       if npid.length == NPID_LENGTH
         # Fetch by npid
