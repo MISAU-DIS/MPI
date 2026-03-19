@@ -366,20 +366,21 @@ module PersonService
 
     # 1º prioridade: NPID
     if npid.present?
-      return self.search_by_npid(params)
+      data = self.search_by_npid(params)
+      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 25 }
     end
 
     # 2º prioridade: documento
     if identifier.present? && identifier[:type].present? && identifier[:value].present?
       identifier_type = PersonIdentifierType.find_by_code(identifier[:type])
-      return [] if identifier_type.blank?
+      return { data: [], total: 0, page: 1, per_page: 25 } if identifier_type.blank?
 
       person_ids = PersonIdentifier.active
         .where(person_identifier_type_id: identifier_type.id, identifier_value: identifier[:value])
         .pluck(:person_detail_id)
 
-      people = PersonDetail.where(id: person_ids)
-      return people.map { |p| self.get_person_obj(p) }
+      data = PersonDetail.where(id: person_ids).map { |p| self.get_person_obj(p) }
+      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 25 }
     end
 
     # 3º prioridade: nome (com filtro opcional por documento)
