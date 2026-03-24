@@ -1,7 +1,7 @@
 class Location < ApplicationRecord
   
   default_scope { where(voided: 0) }
-  validates :ip_address, uniqueness: true
+  validates :ip_address, uniqueness: true, allow_nil: true, allow_blank: true
  
   def self.get_location_by_name(name)
     location = Location.find_by_name(name)
