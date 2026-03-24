@@ -97,6 +97,11 @@ module Api
                       :home_village,
                       :home_traditional_authority,
                       :home_district,
+                      :provincia,
+                      :distrito,
+                      :bairro,
+                      :localidade,
+                      :ponto_de_referencia,
                       :birthdate,
                       :birthdate_estimated,
                       :person_uuid,
@@ -117,7 +122,8 @@ module Api
                       :void_reason,
                       :first_name_soundex,
                       :last_name_soundex,
-                      :update_seq)
+                      :update_seq,
+                      person_identifiers: [:type, :value])
       end
 
       def validate_pull_source

@@ -43,11 +43,18 @@ class Api::V1::PeopleDetailsController < ApplicationController
   end
 
  #Search by name and gender
+ def search_person
+    result = PersonService.search_person(params)
+    set_pagination_headers(result)
+    render json: result[:data], status: :ok
+  end
+
  def search_by_name_and_gender
     errors = ValidateParams.search_by_name_and_gender(params)
     if errors.blank?
-      search_results = PersonService.search_by_name_and_gender(params)
-      render json: search_results, status: search_results.blank? ? :not_found : :ok
+      result = PersonService.search_by_name_and_gender(params)
+      set_pagination_headers(result)
+      render json: result[:data], status: :ok
     else
       render json: errors, status: :unprocessable_entity
     end
@@ -57,7 +64,7 @@ class Api::V1::PeopleDetailsController < ApplicationController
    errors = ValidateParams.search_by_npid(params)
    if errors.blank?
      search_results = PersonService.search_by_npid(params)
-     render json: search_results, status: search_results.blank? ? :not_found : :ok
+     render json: search_results, status: :ok
    else
     render json: errors, status: :unprocessable_entity
    end
@@ -67,7 +74,7 @@ class Api::V1::PeopleDetailsController < ApplicationController
     errors = ValidateParams.search_by_doc_id(params)
     if errors.blank?
       search_results = PersonService.search_by_doc_id(params)
-      render json: search_results, status: search_results.blank? ? :not_found : :ok
+      render json: search_results, status: :ok
     else
       render json: errors, status: :unprocessable_entity
     end
@@ -98,6 +105,13 @@ class Api::V1::PeopleDetailsController < ApplicationController
   end
 
   private
+    def set_pagination_headers(result)
+      response.set_header('X-Total-Count', result[:total])
+      response.set_header('X-Page',        result[:page])
+      response.set_header('X-Per-Page',    result[:per_page])
+      response.set_header('X-Total-Pages', (result[:total].to_f / result[:per_page]).ceil)
+    end
+
     # Use callbacks to share common setup or constraints between actions.
     def set_api_v1_people_detail
       @api_v1_people_detail = Api::V1::PeopleDetail.find(params[:id])

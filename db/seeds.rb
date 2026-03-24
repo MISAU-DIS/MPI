@@ -1,4 +1,25 @@
 # This file should contain all the record creation needed to seed the database with its default values.
+
+# === Person Identifier Types (Mozambique) ===
+[
+  { code: 'BI',            name: 'Bilhete de Identidade',   description: 'Documento de identificação nacional' },
+  { code: 'CERTIDAO_NASC', name: 'Certidão de Nascimento',  description: 'Certidão de nascimento emitida pelo registo civil' },
+  { code: 'CARTAO_ELEITOR',name: 'Cartão de Eleitor',       description: 'Cartão de recenseamento eleitoral' },
+  { code: 'CARTA_CONDUCAO',name: 'Carta de Condução',       description: 'Licença de condução' },
+  { code: 'PASSAPORTE',    name: 'Passaporte',              description: 'Passaporte nacional ou estrangeiro' },
+  { code: 'DIRE',          name: 'DIRE',                    description: 'Documento de Identificação de Residentes Estrangeiros' },
+  { code: 'NID_ANTIGO',    name: 'NID Antigo',              description: 'Número de Identificação antigo' },
+  { code: 'NUIT',          name: 'NUIT',                    description: 'Número Único de Identificação Tributária' },
+  { code: 'NUIC',          name: 'NUIC',                    description: 'Número Único de Identificação do Cidadão' },
+  { code: 'SEM_DOCUMENTO', name: 'Sem Documento',           description: 'Paciente sem documento de identificação' }
+].each do |attrs|
+  PersonIdentifierType.find_or_create_by(code: attrs[:code]) do |t|
+    t.name        = attrs[:name]
+    t.description = attrs[:description]
+  end
+end
+
+
 # The data can then be loaded with the rails db:seed command (or created alongside the database with db:setup).
 #
 # Examples:

@@ -123,6 +123,7 @@ class SyncJob < ApplicationJob
       updates.each do |record|
         person = PersonDetail.unscoped.find_by(person_uuid: record['person_uuid'])
         pull_seq = record['id'].to_i
+        person_identifiers = record.delete('person_identifiers')
         record.delete('id')
         record.delete('created_at')
         record.delete('updated_at')
@@ -136,7 +137,7 @@ class SyncJob < ApplicationJob
                 for incomming UUID: #{record['person_uuid']}, national_id: #{record['national_id']}")
               next
             end
-            PersonDetail.create!(record)
+            person = PersonDetail.create!(record)
           else
             person.update(record)
             audit_record = JSON.parse(person.to_json)
@@ -145,6 +146,7 @@ class SyncJob < ApplicationJob
             audit_record.delete('updated_at')
             PersonDetailsAudit.create!(audit_record)
           end
+          PersonIdentifierService.sync(person, person_identifiers)
           Config.where(config: 'pull_seq_new').update(config_value: pull_seq)
         end
       end
@@ -163,6 +165,7 @@ class SyncJob < ApplicationJob
       updates.each do |record|
         person = PersonDetail.unscoped.find_by(person_uuid: record['person_uuid'])
         pull_seq = record['update_seq'].to_i
+        person_identifiers = record.delete('person_identifiers')
         record.delete('id')
         record.delete('created_at')
         record.delete('updated_at')
@@ -177,7 +180,7 @@ class SyncJob < ApplicationJob
                 for incomming UUID: #{record['person_uuid']}, national_id: #{record['national_id']}")
               next
             end
-            PersonDetail.create!(record)
+            person = PersonDetail.create!(record)
           else
             person.update(record)
             audit_record = JSON.parse(person.to_json)
@@ -187,6 +190,7 @@ class SyncJob < ApplicationJob
             audit_record.delete('update_seq')
             PersonDetailsAudit.create!(audit_record)
           end
+          PersonIdentifierService.sync(person, person_identifiers)
           Config.where(config: 'pull_seq_update').update(config_value: pull_seq)
         end
       end
@@ -277,6 +281,11 @@ class SyncJob < ApplicationJob
       "ancestry_village": person.ancestry_village,
       "ancestry_ta": person.ancestry_ta,
       "ancestry_district": person.ancestry_district,
+      "provincia": person.provincia,
+      "distrito": person.distrito,
+      "bairro": person.bairro,
+      "localidade": person.localidade,
+      "ponto_de_referencia": person.ponto_de_referencia,
       "birthdate": person.birthdate,
       "birthdate_estimated": person.birthdate_estimated,
       "person_uuid": person.person_uuid,
@@ -293,6 +302,7 @@ class SyncJob < ApplicationJob
       "void_reason": person.void_reason,
       "first_name_soundex": person.first_name_soundex,
       "last_name_soundex": person.last_name_soundex,
+      "person_identifiers": PersonIdentifierService.for_person(person),
       "update_seq": begin
         person.update_seq
       rescue StandardError

@@ -10,6 +10,7 @@ module SyncService
     PersonDetail.unscoped
                 .where('location_updated_at != ? AND id > ?', site_id, pull_seq)
                 .order(:id).limit(@batch)
+                .map { |p| p.as_json.merge('person_identifiers' => PersonIdentifierService.for_person(p)) }
   end
 
   def self.person_changes_updates(pull_params)
@@ -20,6 +21,7 @@ module SyncService
                 .order('person_details_audits.id')
                 .limit(@batch)
                 .select('person_details.*,person_details_audits.id as update_seq')
+                .map { |p| p.as_json.merge('person_identifiers' => PersonIdentifierService.for_person(p)) }
   end
 
   def self.update_records_updates(data)
@@ -31,6 +33,7 @@ module SyncService
 
     person = PersonDetail.unscoped.find_by_person_uuid(data[:person_uuid])
     current_seq = data[:update_seq].to_i
+    person_identifiers = data.delete(:person_identifiers)
     data.delete('id')
     data.delete('created_at')
     data.delete('updated_at')
@@ -43,6 +46,7 @@ module SyncService
         audit_record.delete('updated_at')
         audit_record.delete('update_seq')
         PersonDetailsAudit.create!(audit_record)
+        PersonIdentifierService.sync(person, person_identifiers)
         push_seq.update(push_seq: current_seq)
         {status: 200, push_seq: current_seq}
     end
@@ -57,13 +61,14 @@ module SyncService
 
     person = PersonDetail.unscoped.find_by_person_uuid(data[:person_uuid])
     current_seq = data[:id].to_i
+    person_identifiers = data.delete(:person_identifiers)
     data.delete('id')
     data.delete('created_at')
     data.delete('updated_at')
     data.delete('update_seq')
     ActiveRecord::Base.transaction do
       if person.blank?
-        PersonDetail.create!(data)
+        person = PersonDetail.create!(data)
         LocationNpid.unscoped.find_by_npid(data[:npid]).update(assigned: true)
       else
         person.update(data)
@@ -74,6 +79,7 @@ module SyncService
         audit_record.delete('update_seq')
         PersonDetailsAudit.create!(audit_record)
       end
+      PersonIdentifierService.sync(person, person_identifiers)
       push_seq.update(push_seq: current_seq)
       {status: 200, push_seq: current_seq}
     end

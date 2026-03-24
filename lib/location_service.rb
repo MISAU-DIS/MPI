@@ -98,6 +98,7 @@ module LocationService
       #status, last_updated = l.online?
 
       locations << {
+        location_id: l.location_id,
         name: l.name,
         doc_id: l.couchdb_location_id,
         latitude: l.latitude,

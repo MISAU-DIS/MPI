@@ -65,6 +65,12 @@ module PersonService
     ancestry_ta                 = params[:attributes][:home_traditional_authority] rescue nil
     ancestry_village            = params[:attributes][:home_village] rescue nil
 
+    provincia                   = params[:attributes][:provincia] rescue nil
+    distrito                    = params[:attributes][:distrito] rescue nil
+    bairro                      = params[:attributes][:bairro] rescue nil
+    localidade                  = params[:attributes][:localidade] rescue nil
+    ponto_de_referencia         = params[:attributes][:ponto_de_referencia] rescue nil
+
     art_number              = params[:identifiers][:art_number] rescue nil
     htn_number              = params[:identifiers][:htn_number] rescue nil
     national_id             = params.dig(:identifiers, :national_id).presence
@@ -100,6 +106,11 @@ module PersonService
                                       home_district: current_district,
                                       home_ta: current_ta,
                                       home_village: current_village,
+                                      provincia: provincia,
+                                      distrito: distrito,
+                                      bairro: bairro,
+                                      localidade: localidade,
+                                      ponto_de_referencia: ponto_de_referencia,
                                       creator: current_user.id,
                                       location_updated_at: current_user.location_id,
                                       date_registered: Time.now,
@@ -113,9 +124,10 @@ module PersonService
       # NpidService.assign_npid(person)
       # #####################
       npid.update(assigned: true)
+      PersonIdentifierService.create(person, params[:person_identifiers])
     end
 
-    return self.after_create_get_person_obj(person, params[:attributes])
+    return self.after_create_get_person_obj(person, params[:attributes] || {})
   end
 
   def self.after_create_get_person_obj(person, params)
@@ -135,13 +147,19 @@ module PersonService
         current_village: params[:current_village],
         home_district: params[:home_district],
         home_traditional_authority: params[:home_traditional_authority],
-        home_village: params[:home_village]
+        home_village: params[:home_village],
+        provincia: params[:provincia],
+        distrito: params[:distrito],
+        bairro: params[:bairro],
+        localidade: params[:localidade],
+        ponto_de_referencia: params[:ponto_de_referencia]
       },
       identifiers: {
         art_number: params[:art_number],
         htn_number: params[:htn_number],
-        national_id:  person.national_id,
+        national_id: person.national_id,
       },
+      person_identifiers: PersonIdentifierService.for_person(person),
       npid: person.npid,
       doc_id: person.person_uuid
     }
@@ -181,6 +199,11 @@ module PersonService
                       ancestry_district:         (params[:attributes][:home_district] rescue nil),
                       ancestry_ta:               (params[:attributes][:home_traditional_authority] rescue nil),
                       ancestry_village:          (params[:attributes][:home_village] rescue nil),
+                      provincia:                 (params[:attributes][:provincia] rescue nil),
+                      distrito:                  (params[:attributes][:distrito] rescue nil),
+                      bairro:                    (params[:attributes][:bairro] rescue nil),
+                      localidade:                (params[:attributes][:localidade] rescue nil),
+                      ponto_de_referencia:       (params[:attributes][:ponto_de_referencia] rescue nil),
                       location_created_at:  person.location_created_at,
                       location_updated_at:  current_user.location_id,
                       date_registered:      person.date_registered,
@@ -198,7 +221,10 @@ module PersonService
       audit_person.delete('id')
       audit_person.delete('updated_at')
       PersonDetailsAudit.create!(audit_person)
+      PersonIdentifierService.update(person, params[:person_identifiers])
     end
+
+    self.get_person_obj(person.reload)
   end
 
   def self.potential_duplicates(params)
@@ -252,9 +278,15 @@ module PersonService
           current_village: person.home_village,
           home_district: person.ancestry_district,
           home_traditional_authority: person.ancestry_ta,
-          home_village: person.ancestry_village
+          home_village: person.ancestry_village,
+          provincia: person.provincia,
+          distrito: person.distrito,
+          bairro: person.bairro,
+          localidade: person.localidade,
+          ponto_de_referencia: person.ponto_de_referencia
         },
           # identifiers: self.get_identifiers(person),
+          person_identifiers: PersonIdentifierService.for_person(person),
           npid: person.npid,
           national_id:  person.national_id,
           doc_id: person.person_uuid
@@ -312,21 +344,69 @@ module PersonService
   end
 
   def self.search_by_name_and_gender(params)
-    first_name  = params[:given_name]
-    last_name = params[:family_name]
-    gender      = params[:gender]
+    first_name = params[:given_name]
+    last_name  = params[:family_name]
+    gender     = params[:gender]
+    page     = [params[:page].to_i, 1].max
+    per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 10
 
-    people = PersonDetail.where(["first_name = ?
-      AND last_name = ? AND gender = ?",
-      first_name, last_name, gender]).limit(10)
+    query  = PersonDetail.where("first_name LIKE ? AND last_name LIKE ? AND gender = ?", "#{first_name}%", "#{last_name}%", gender)
+    total  = query.count
+    people = query.offset((page - 1) * per_page).limit(per_page)
 
-    people_arr = []
+    { data: people.map { |p| self.get_person_obj(p) }, total: total, page: page, per_page: per_page }
+  end
 
-    (people || []).each do |person|
-      people_arr << self.get_person_obj(person)
+  def self.search_person(params)
+    npid       = params[:npid]
+    identifier = params[:identifier]
+    given_name = params[:given_name]
+    family_name = params[:family_name]
+    gender     = params[:gender]
+
+    # 1º prioridade: NPID
+    if npid.present?
+      data = self.search_by_npid(params)
+      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 10 }
     end
 
-    return people_arr
+    # 2º prioridade: documento
+    if identifier.present? && identifier[:type].present? && identifier[:value].present?
+      identifier_type = PersonIdentifierType.find_by_code(identifier[:type])
+      return { data: [], total: 0, page: 1, per_page: 10 } if identifier_type.blank?
+
+      person_ids = PersonIdentifier.active
+        .where(person_identifier_type_id: identifier_type.id, identifier_value: identifier[:value])
+        .pluck(:person_detail_id)
+
+      data = PersonDetail.where(id: person_ids).map { |p| self.get_person_obj(p) }
+      return { data: data, total: data.length, page: 1, per_page: data.length.nonzero? || 10 }
+    end
+
+    # 3º prioridade: nome (com filtro opcional por documento)
+    if given_name.present? && family_name.present?
+      page     = [params[:page].to_i, 1].max
+      per_page = params[:per_page].present? ? [[params[:per_page].to_i, 1].max, 100].min : 10
+
+      query = PersonDetail.where("first_name LIKE ? AND last_name LIKE ?", "#{given_name}%", "#{family_name}%")
+      query = query.where(gender: gender) if gender.present?
+
+      if identifier.present? && identifier[:type].present? && identifier[:value].present?
+        identifier_type = PersonIdentifierType.find_by_code(identifier[:type])
+        unless identifier_type.blank?
+          person_ids = PersonIdentifier.active
+            .where(person_identifier_type_id: identifier_type.id, identifier_value: identifier[:value])
+            .pluck(:person_detail_id)
+          query = query.where(id: person_ids)
+        end
+      end
+
+      total = query.count
+      data  = query.offset((page - 1) * per_page).limit(per_page).map { |p| self.get_person_obj(p) }
+      return { data: data, total: total, page: page, per_page: per_page }
+    end
+
+    { data: [], total: 0, page: 1, per_page: 10 }
   end
 
   def self.search_by_npid(params)
@@ -350,6 +430,7 @@ module PersonService
         #npid, npid).joins("RIGHT JOIN person_attributes p
       #ON p.couchdb_person_id = people.couchdb_person_id").select("people.*")
       people = []
+      person = []
 
       if npid.length == NPID_LENGTH
         # Fetch by npid
