@@ -28,25 +28,21 @@ module LocationService
   end
 
   def self.find_location(location_id)
-    #status = 'OFFLINE'
-  
-    query = Location.where(couchdb_location_id: location_id)
+    if location_id.to_s.match?(/^\d+$/)
+      query = Location.where(location_id: location_id)
+    else
+      query = Location.where(couchdb_location_id: location_id.to_s)
+    end
+
     if query.blank?
       return {}
     end
+    
     location = []
     (query || []).each do |l|
-      location_tags = LocationTag.where("l.couchdb_location_id = ?",
-                          l.couchdb_location_id).joins("INNER JOIN location_tag_maps m
-        ON m.location_tag_id = location_tags.location_tag_id
-        INNER JOIN locations l ON l.location_id = m.location_id").select("location_tags.*")
-      #ds = DistrictSite.where(site_id: l.location_id).first #rescue "Unknown"
-      #district = Location.find(ds.district_id).name rescue "Unknown"
-      
-      #rd = RegionDistrict.where(district_id: ds.district_id).first
-      #region = Region.find(rd.region_id).name rescue "Unknown"
-    
-      #status, last_updated = l.online?
+      location_tags = LocationTag.joins("INNER JOIN location_tag_maps m ON m.location_tag_id = location_tags.location_tag_id")
+                                 .where("m.location_id = ?", l.location_id)
+                                 .select("location_tags.*")
 
       location << {
         name: l.name,
@@ -55,13 +51,10 @@ module LocationService
         longitude: l.longitude,
         code: l.code,
         location_tags: location_tags.map(&:name),
-       #district: district,
-       #region: region,
         host: l.ip_address,
-       #sync_status: status,
-       #last_updated: last_updated
       }
     end
+    
     return location
   end
 
