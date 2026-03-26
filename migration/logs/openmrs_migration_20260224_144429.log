@@ -1,0 +1,12 @@
+[2026-02-24 14:44:29] INFO: ╔==========================================================╗
+[2026-02-24 14:44:29] INFO: ║  OpenMRS Bulk Migration to Proxy                      ║
+[2026-02-24 14:44:29] INFO: ╚==========================================================╝
+[2026-02-24 14:44:29] INFO: Token expirado ou ausente — re-autenticando...
+[2026-02-24 14:44:29] INFO: Autenticando no Proxy (127.0.0.1:8050)...
+[2026-02-24 14:44:30] ERROR: ✗ Erro na autenticação: {"error":{"user_authentication":"Invalid credentials"}}
+[2026-02-24 14:44:30] ERROR: FATAL: Falha ao autenticar no Proxy
+[2026-02-24 14:44:30] ERROR: emr_bulk_migration.rb:238:in `rescue in authenticate_proxy'
+emr_bulk_migration.rb:217:in `authenticate_proxy'
+emr_bulk_migration.rb:249:in `ensure_valid_token'
+emr_bulk_migration.rb:490:in `process_in_batches'
+emr_bulk_migration.rb:648:in `<main>'

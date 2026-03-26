@@ -1,0 +1,13 @@
+[2026-02-24 14:48:31] INFO: ╔==========================================================╗
+[2026-02-24 14:48:31] INFO: ║  OpenMRS Bulk Migration to Proxy                      ║
+[2026-02-24 14:48:31] INFO: ╚==========================================================╝
+[2026-02-24 14:48:31] INFO: Token expirado ou ausente — re-autenticando...
+[2026-02-24 14:48:31] INFO: Autenticando no Proxy (127.0.0.1:8050)...
+[2026-02-24 14:48:32] INFO: ✓ Autenticação bem-sucedida (token válido por ~60min)
+[2026-02-24 14:48:32] ERROR: FATAL: Access denied for user 'root'@'localhost'
+[2026-02-24 14:48:32] ERROR: /home/matcha/.rbenv/versions/3.2.0/lib/ruby/gems/3.2.0/gems/mysql2-0.5.7/lib/mysql2/client.rb:92:in `connect'
+/home/matcha/.rbenv/versions/3.2.0/lib/ruby/gems/3.2.0/gems/mysql2-0.5.7/lib/mysql2/client.rb:92:in `initialize'
+emr_bulk_migration.rb:257:in `new'
+emr_bulk_migration.rb:257:in `mysql_connection'
+emr_bulk_migration.rb:492:in `process_in_batches'
+emr_bulk_migration.rb:648:in `<main>'

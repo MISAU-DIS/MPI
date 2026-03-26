@@ -33,6 +33,7 @@ Rails.application.routes.draw do
   #people controller routes
   post "v1/add_person", to: "api/v1/people_details#create"
   post "v1/search_by_name_and_gender", to: "api/v1/people_details#search_by_name_and_gender"
+  post "v1/search_person", to: "api/v1/people_details#search_person"
   post "v1/search_by_npid", to: "api/v1/people_details#search_by_npid"
   post "v1/search_by_doc_id", to: "api/v1/people_details#search_by_doc_id"
   post "v1/search_by_attributes", to: "api/v1/people#search_by_attributes"
@@ -74,6 +75,7 @@ Rails.application.routes.draw do
   get   "v1/new_ids_assigned", to: "api/v1/people#total_assigned"
   get   "v1/foot_print_stats", to: "api/v1/people#client_movements"
   get   "v1/system_info", to: "api/v1/system#info"
+  get   "v1/status",      to: "api/v1/status#index"
   get   "v1/cum_total_assigned", to: "api/v1/people#cum_total_assigned"
   get   "v1/sync_info", to: "api/v1/location#sync_info"
   get   "v1/footprints", to: "api/v1/footprint#by_category"

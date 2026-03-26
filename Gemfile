@@ -17,6 +17,7 @@ gem 'rswag'
 gem 'sidekiq', '~> 7.3.0'
 gem 'sidekiq-cron'
 gem 'whenever', require: false
+gem "connection_pool", "< 3.0"
 # Use mysql as the database for Active Record
 gem 'mysql2', '>= 0.4.4', '< 0.6.0'
 # Use Puma as the app server
@@ -79,3 +80,6 @@ gem "importmap-rails"
 gem "sprockets-rails"
 
 gem "tailwindcss-rails"
+
+# Loads ENV vars from .env in development/test
+gem 'dotenv-rails', groups: [:development, :test]

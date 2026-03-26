@@ -121,48 +121,166 @@ paths:
                       type: string
                     occupation:
                       type: string
+                    provincia:
+                      type: string
+                    distrito:
+                      type: string
+                    bairro:
+                      type: string
+                    localidade:
+                      type: string
+                    ponto_de_referencia:
+                      type: string
                 identifiers:
                   type: object
                   properties:
                     national_id:
                       type: string
+                person_identifiers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: "Código do tipo (ex: BI, PASSAPORTE, NUIT)"
+                      value:
+                        type: string
+                        description: "Número do documento"
               required:
               - given_name
               - family_name
               - gender
               - birthdate
               - birthdate_estimated
-              - attributes
-              - home_district
-              - home_village
-              - home_traditional_authority
+  "/v1/search_person":
+    post:
+      summary: Pesquisa unificada de paciente
+      tags:
+      - Person
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: "Página (default: 1)"
+        required: false
+        schema:
+          type: integer
+          example: 1
+      - name: per_page
+        in: query
+        description: "Resultados por página (default: 25, máx: 100)"
+        required: false
+        schema:
+          type: integer
+          example: 25
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                npid:
+                  type: string
+                  description: "NPID do paciente"
+                given_name:
+                  type: string
+                family_name:
+                  type: string
+                gender:
+                  type: string
+                identifier:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      description: "Código do tipo (ex: BI, PASSAPORTE, NUIT)"
+                    value:
+                      type: string
+                      description: "Número do documento"
+      responses:
+        '200':
+          description: Paciente(s) encontrado(s)
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+              description: Total de registos encontrados
+            X-Page:
+              schema:
+                type: integer
+              description: Página actual
+            X-Per-Page:
+              schema:
+                type: integer
+              description: Resultados por página
+            X-Total-Pages:
+              schema:
+                type: integer
+              description: Total de páginas
   "/v1/search_by_name_and_gender":
     post:
       summary: search_by_name_and_gender people_detail
       tags:
       - Person
       parameters:
-      - name: given_name
-        in: query
-        description: given_name
-        required: true
+      - name: Authorization
+        in: header
         schema:
           type: string
-      - name: family_name
+      - name: page
         in: query
-        description: family_name
-        required: true
+        description: "Página (default: 1)"
+        required: false
         schema:
-          type: string
-      - name: gender
+          type: integer
+          example: 1
+      - name: per_page
         in: query
-        description: gender
-        required: true
+        description: "Resultados por página (default: 25, máx: 100)"
+        required: false
         schema:
-          type: string
+          type: integer
+          example: 25
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - given_name
+                - family_name
+                - gender
+              properties:
+                given_name:
+                  type: string
+                family_name:
+                  type: string
+                gender:
+                  type: string
       responses:
         '200':
-          description: successful
+          description: Paciente(s) encontrado(s)
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+              description: Total de registos encontrados
+            X-Page:
+              schema:
+                type: integer
+              description: Página actual
+            X-Per-Page:
+              schema:
+                type: integer
+              description: Resultados por página
+            X-Total-Pages:
+              schema:
+                type: integer
+              description: Total de páginas
   "/v1/search_by_npid":
     post:
       summary: search_by_npid people_detail
@@ -258,6 +376,27 @@ paths:
                       type: string
                     occupation:
                       type: string
+                    provincia:
+                      type: string
+                    distrito:
+                      type: string
+                    bairro:
+                      type: string
+                    localidade:
+                      type: string
+                    ponto_de_referencia:
+                      type: string
+                person_identifiers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: "Código do tipo (ex: BI, PASSAPORTE, NUIT)"
+                      value:
+                        type: string
+                        description: "Número do documento"
                 npid:
                   type: string
                 national_id:
@@ -537,10 +676,7 @@ paths:
         '200':
           description: successful
 servers:
-- url: http://{defaultHost}
-  variables:
-    defaultHost:
-      default: localhost:3004
+- url: "/"
 components:
   securitySchemes:
     bearerAuth:
