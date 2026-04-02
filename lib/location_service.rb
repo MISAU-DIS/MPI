@@ -52,7 +52,7 @@ module LocationService
         longitude: l.longitude,
         code: l.code,
         location_tags: location_tags.map(&:name),
-        host: l.ip_address,  
+        host: l.ip_address  
       }
     end
     
