@@ -1,4 +1,4 @@
-:concurrency: 4
+:concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 4) %>
 :queues:
 - default
 - location_npid
@@ -10,4 +10,4 @@
 - sync
 
 :redis:
-  :url: 'redis://localhost:6379/2'
+  :url: <%= ENV.fetch("SIDEKIQ_REDIS_URL", "redis://localhost:6379/2") %>

@@ -1,4 +1,4 @@
-secret_key: ""
-duplicate_precision: 90
-gateway_key: 'usermanagement'
-sss_url: localhost:3001
+secret_key: <%= ENV.fetch("SETTINGS_SECRET_KEY", "") %>
+duplicate_precision: <%= ENV.fetch("SETTINGS_DUPLICATE_PRECISION", 90) %>
+gateway_key: <%= ENV.fetch("SETTINGS_GATEWAY_KEY", "usermanagement") %>
+sss_url: <%= ENV.fetch("SETTINGS_SSS_URL", "localhost:3001") %>

@@ -8,31 +8,31 @@
 
 # MySQL EMR Database
 emr_database:
-  host: localhost
-  port: 3306
-  username: root
-  password: YOUR_OPENMRS_PASSWORD
-  database: openmrs
+  host: <%= ENV.fetch("EMR_DB_HOST", "localhost") %>
+  port: <%= ENV.fetch("EMR_DB_PORT", 3306) %>
+  username: <%= ENV.fetch("EMR_DB_USER", "root") %>
+  password: <%= ENV.fetch("EMR_DB_PASS", "YOUR_OPENMRS_PASSWORD") %>
+  database: <%= ENV.fetch("EMR_DB_NAME", "openmrs") %>
 
 # Proxy Server (DDE)
 proxy:
-  protocol: http
-  host: 127.0.0.1
-  port: 8050
-  username: YOUR_PROXY_USERNAME
-  password: YOUR_PROXY_PASSWORD
+  protocol: <%= ENV.fetch("PROXY_PROTOCOL", "http") %>
+  host: <%= ENV.fetch("PROXY_HOST", "127.0.0.1") %>
+  port: <%= ENV.fetch("PROXY_PORT", 8050) %>
+  username: <%= ENV.fetch("PROXY_USER", "YOUR_PROXY_USERNAME") %>
+  password: <%= ENV.fetch("PROXY_PASS", "YOUR_PROXY_PASSWORD") %>
 
 # Migration Settings
 migration:
-  batch_size: 100         # Número de pacientes por página (leitura do DB)
-  max_retries: 3          # Tentativas em caso de falha de rede
-  retry_delay: 2          # Base do backoff exponencial (segundos)
-  http_open_timeout: 10   # Timeout de conexão HTTP (segundos)
-  http_read_timeout: 30   # Timeout de leitura HTTP (segundos)
+  batch_size: <%= ENV.fetch("MIGRATION_BATCH_SIZE", 100) %>        # Número de pacientes por página (leitura do DB)
+  max_retries: <%= ENV.fetch("MIGRATION_MAX_RETRIES", 3) %>        # Tentativas em caso de falha de rede
+  retry_delay: <%= ENV.fetch("MIGRATION_RETRY_DELAY", 2) %>        # Base do backoff exponencial (segundos)
+  http_open_timeout: <%= ENV.fetch("HTTP_OPEN_TIMEOUT", 10) %>     # Timeout de conexão HTTP (segundos)
+  http_read_timeout: <%= ENV.fetch("HTTP_READ_TIMEOUT", 30) %>     # Timeout de leitura HTTP (segundos)
 
 # Write-Back Settings (NPID → EMR)
 writeback:
-  location_id: 319                # ID da localização no OpenMRS/SIS-RME
-  npid_identifier_type: 3         # patient_identifier_type.patient_identifier_type_id para NPID
-  doc_id_identifier_type: 18      # patient_identifier_type.patient_identifier_type_id para doc_id (UUID do proxy)
-  batch_size: 500                 # Número de registos por batch de inserção
+  location_id: <%= ENV.fetch("WRITEBACK_LOCATION_ID", 319) %>                # ID da localização no OpenMRS/SIS-RME
+  npid_identifier_type: <%= ENV.fetch("NPID_IDENTIFIER_TYPE", 3) %>          # patient_identifier_type.patient_identifier_type_id para NPID
+  doc_id_identifier_type: <%= ENV.fetch("DOC_ID_IDENTIFIER_TYPE", 18) %>     # patient_identifier_type.patient_identifier_type_id para doc_id (UUID do proxy)
+  batch_size: <%= ENV.fetch("WRITEBACK_BATCH_SIZE", 500) %>                  # Número de registos por batch de inserção

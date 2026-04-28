@@ -1,0 +1,30 @@
+services:
+  mpi:
+    container_name: sis-h-mpi
+    image: ghcr.io/misau-dis/mpi:1.0.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      # Persistent storage
+      - mpi_storage:/app/storage
+
+      # Optionally BIND yml files to OS for more customization control.
+      # - ./config/schedule.yml:/app/config/schedule.yml
+    # networks:
+    #   - q01-sis-rme_default
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  mpi_storage:
+
+# networks:
+#   sis-rme_default:
+#     external: true
