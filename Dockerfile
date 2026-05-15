@@ -168,7 +168,7 @@ set -e
 # Resolve the target filename for a given *.yml.example basename.
 # CONFIG_RENAMES format (set in .env): "src1.yml.example:tgt1.yml,src2.yml.example:tgt2.yml"
 resolve_target() {
-  src_base="$1"   # e.g. emr_migration.yml.example
+  src_base="$1"
   if [ -n "$CONFIG_RENAMES" ]; then
     match="$(printf '%s' "$CONFIG_RENAMES" | tr ',' '\n' | awk -F: -v s="$src_base" '$1==s{print $2; exit}')"
     [ -n "$match" ] && { echo "$match"; return; }
@@ -185,9 +185,9 @@ for example in /app/config/*.yml.example; do
   tgt_base="$(resolve_target "$src_base")"
   target="/app/config/$tgt_base"
 
-  if [ ! -s "$target" ]; then
+  if [[ ! -s "$target" ] || ! -f "$target" ]]; then
+    cat "$example" > "$target"
     log.sh success "  $src_base  →  $tgt_base  (populated)"
-    cp "$example" "$target"
   else
     echo "         $tgt_base already present — skipping"
   fi
