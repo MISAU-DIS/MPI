@@ -55,12 +55,6 @@ production:
 :batch_size:
   :batch: <%= ENV.fetch("BATCH_SIZE", 10_000) %>
 
-:dde_sync_config:
-  :protocol: <%= ENV.fetch("DDE_SYNC_PROTOCOL", "https") %>
-  :host: <%= ENV.fetch("DDE_SYNC_HOST", "ddedashboard.hismalawi.org") %>
-  :username: <%= ENV.fetch("DDE_SYNC_USER", "test") %>
-  :password: <%= ENV.fetch("DDE_SYNC_PASS", "test") %>
-
 :email_config:
   :user_name: <%= ENV.fetch("EMAIL_USER", "example@gmail.com") %>
   :password: <%= ENV.fetch("EMAIL_PASS", "password") %>
