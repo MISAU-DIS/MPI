@@ -1,29 +1,28 @@
 # SMTP Settings
 smtp_settings:
   production:
-    address: "smtp.office365.com"
-    port: 587
-    user_name: "<%= ENV['PROD_EMAIL_ADDRESS'] %>"
-    password: "<%= ENV['PROD_EMAIL_PASSWORD'] %>"
-    authentication: "login"
-    enable_starttls_auto: true
-    domain: "pedaids.org"
+    address: "<%= ENV['SMTP_SERVER'] %>"
+    port: "<%= ENV['SMTP_SERVER_PORT'] %>"
+    user_name: "<%= ENV['SMTP_ADDRESS'] %>"
+    password: "<%= ENV['SMTP_PASSWORD'] %>"
+    authentication: "<%= ENV['SMTP_AUTHENTICATION'] %>"
+    enable_starttls_auto: "<%= ENV['SMTP_STARTTLS_AUTO'] %>"
+    domain: "<%= ENV['SMTP_DOMAIN'] %>"
   
   development:
-    address: "smtp.office365.com"
-    port: 587
-    user_name: "<%= ENV['DEV_EMAIL_ADDRESS'] %>"
-    password: "<%= ENV['DEV_EMAIL_PASSWORD'] %>"
-    authentication: "login"
-    enable_starttls_auto: true
-    domain: "pedaids.org"
+    address: "<%= ENV['SMTP_SERVER'] %>"
+    port: "<%= ENV['SMTP_SERVER_PORT'] %>"
+    user_name: "<%= ENV['SMTP_ADDRESS'] %>"
+    password: "<%= ENV['SMTP_PASSWORD'] %>"
+    authentication: "<%= ENV['SMTP_AUTHENTICATION'] %>"
+    enable_starttls_auto: "<%= ENV['SMTP_STARTTLS_AUTO'] %>"
+    domain: "<%= ENV['SMTP_DOMAIN'] %>"
   
   test:
-    address: "smtp.office365.com"
-    port: 587
-    user_name: "<%= ENV['TEST_EMAIL_ADDRESS'] %>"
-    password: "<%= ENV['TEST_EMAIL_PASSWORD'] %>"
-    authentication: "login"
-    enable_starttls_auto: true
-    domain: "pedaids.org"
-
+    address: "<%= ENV['SMTP_SERVER'] %>"
+    port: "<%= ENV['SMTP_SERVER_PORT'] %>"
+    user_name: "<%= ENV['SMTP_ADDRESS'] %>"
+    password: "<%= ENV['SMTP_PASSWORD'] %>"
+    authentication: "<%= ENV['SMTP_AUTHENTICATION'] %>"
+    enable_starttls_auto: "<%= ENV['SMTP_STARTTLS_AUTO'] %>"
+    domain: "<%= ENV['SMTP_DOMAIN'] %>"

@@ -7,13 +7,11 @@ class SyncJob < ApplicationJob
   def initialize(*_args)
     super()
 
-    sync_configs = YAML.load(File.read("#{Rails.root}/config/database.yml"), aliases: true)[:dde_sync_config]
-
-    @protocol = sync_configs[:protocol]
-    @host = sync_configs[:host]
-    @username = sync_configs[:username]
-    @pwd = sync_configs[:password]
-    @port  = sync_configs[:port]
+    @protocol = DDE_SYNC_CONFIG[:protocol]
+    @host     = DDE_SYNC_CONFIG[:host]
+    @username = DDE_SYNC_CONFIG[:username]
+    @pwd      = DDE_SYNC_CONFIG[:password]
+    @port     = DDE_SYNC_CONFIG[:port]
 
     @base_url = if @port.nil?
                   "#{@protocol}://#{@host}/v1"
@@ -29,7 +27,6 @@ class SyncJob < ApplicationJob
     end
 
     @location = @user['location_id'].to_i
-
     @token = ''
   end
 

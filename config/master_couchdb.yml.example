@@ -1,17 +1,17 @@
 development:
-  protocol: http
-  host: localhost
-  port: 5984
-  username: root
-  password: root
-  primary: dde3_master_development
-  bidirectional: true
+  protocol: <%= ENV.fetch("MASTER_COUCH_DB_PROTOCOL", "http") %>
+  host: <%= ENV.fetch("MASTER_COUCH_DB_HOST", "localhost") %>
+  port: <%= ENV.fetch("MASTER_COUCH_DB_PORT", 5984) %>
+  username: <%= ENV.fetch("MASTER_COUCH_DB_USER", "root") %>
+  password: <%= ENV.fetch("MASTER_COUCH_DB_PASS", "root") %>
+  primary: <%= ENV.fetch("MASTER_COUCH_DB_NAME", "dde3_master_production") %>
+  bidirectional: <%= ENV.fetch("MASTER_COUCH_DB_BIDIRECTIONAL", true) %>
 
 production:
-  protocol: http
-  host: localhost
-  port: 5984
-  username: root
-  password: root
-  primary: dde3_master_production
-  bidirectional: true
+  protocol: <%= ENV.fetch("MASTER_COUCH_DB_PROTOCOL", "http") %>
+  host: <%= ENV.fetch("MASTER_COUCH_DB_HOST", "localhost") %>
+  port: <%= ENV.fetch("MASTER_COUCH_DB_PORT", 5984) %>
+  username: <%= ENV.fetch("MASTER_COUCH_DB_USER", "root") %>
+  password: <%= ENV.fetch("MASTER_COUCH_DB_PASS", "root") %>
+  primary: <%= ENV.fetch("MASTER_COUCH_DB_NAME", "dde3_master_production") %>
+  bidirectional: <%= ENV.fetch("MASTER_COUCH_DB_BIDIRECTIONAL", true) %>

@@ -79,7 +79,7 @@ gem "importmap-rails"
 
 gem "sprockets-rails"
 
-gem "tailwindcss-rails"
+gem "tailwindcss-rails", "~> 2.7"
 
 # Loads ENV vars from .env in development/test
 gem 'dotenv-rails', groups: [:development, :test]
