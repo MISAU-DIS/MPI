@@ -66,28 +66,17 @@ end
 
 
 
-unless User.exists?
-#Load proxy Meta data
-metadata_sql_files = %w[dde4_metadata dde4_locations]
-connection = ActiveRecord::Base.connection
-(metadata_sql_files || []).each do |metadata_sql_file|
-  puts "Loading #{metadata_sql_file} metadata sql file"
-  sql = File.read("db/meta_data/#{metadata_sql_file}.sql")
-    statements = sql.split(/;$/)
-    statements.pop
-
-    ActiveRecord::Base.transaction do
-      statements.each do |statement|
-        connection.execute(statement)
-      end
-    end
-    puts "Loaded #{metadata_sql_file} metadata sql file successfully"
-    puts ''
-  end
+unless User.exists?(username: 'admin')
+  puts "Creating default admin user..."
+  User.create!(
+    username: 'admin',
+    password: 'admin123',
+    default_user: true
+  )
+  puts "Admin user created successfully."
 else
-  # Set admin as a default user
-  User.where(username: "admin").update(default_user: true)
-end 
+  User.where(username: "admin").update_all(default_user: true)
+end
 
 return unless ENV['MASTER'] == 'true' # Do not add contraints if it is not a master
 
