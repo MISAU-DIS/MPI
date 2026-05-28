@@ -185,7 +185,7 @@ for example in /app/config/*.yml.example; do
   tgt_base="$(resolve_target "$src_base")"
   target="/app/config/$tgt_base"
 
-  if [[ ! -s "$target" ] || ! -f "$target" ]]; then
+  if [[ ! -s "$target" ]]; then
     cat "$example" > "$target"
     log.sh success "  $src_base  →  $tgt_base  (populated)"
   else
