@@ -1,0 +1,77 @@
+services:
+  # ----------------------------------------
+  # 1. MASTER STACK (MISAU)
+  # ----------------------------------------
+  master-db:
+    image: mysql:8.0
+    container_name: mpi-master-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dde_master
+    ports:
+      - "3308:3306" # Accessible on your machine at port 3306
+    volumes:
+      - master_db_data:/var/lib/mysql
+
+  master-app:
+    build: . # Builds from your local codebase
+    container_name: mpi-master-app
+    ports:
+      - "3000:3000" # Accessible in browser at http://localhost:3000
+    depends_on:
+      - master-db
+    environment:
+      - MASTER=true
+      - DB_HOST=master-db
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - DB_NAME=dde_master
+      - RAILS_ENV=production
+      - REDIS_URL=redis://localhost:6379/1 # Uses the Redis built into the image
+      - DDE_HOST_URL=http://localhost:3000
+      - DB_FAIL_EXIT=false # Prevents the container from instantly crashing if the DB isn't ready yet
+
+  # ----------------------------------------
+  # 2. PROXY STACK (CLINIC)
+  # ----------------------------------------
+  proxy-db:
+    image: mysql:8.0
+    container_name: mpi-proxy-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dde_proxy
+    ports:
+      - "3309:3306" # Accessible on your machine at port 3307
+    volumes:
+      - proxy_db_data:/var/lib/mysql
+
+  proxy-app:
+    build: . # Builds from the exact same local codebase
+    container_name: mpi-proxy-app
+    ports:
+      - "3001:3000" # Accessible in browser at http://localhost:3001
+    depends_on:
+      - proxy-db
+      - master-app
+    environment:
+      - MASTER=false
+      - DB_HOST=proxy-db
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - DB_NAME=dde_proxy
+      - RAILS_ENV=production
+      - REDIS_URL=redis://localhost:6379/1
+      - DDE_HOST_URL=http://localhost:3001
+      # --- Sync Configuration Pointing to the Master Container ---
+      - DDE_SYNC_PROTOCOL=http
+      - DDE_SYNC_HOST=master-app
+      - DDE_SYNC_PORT=3000
+      - DDE_SYNC_USER=admin
+      - DDE_SYNC_PASS=admin123
+      - DB_FAIL_EXIT=false
+
+volumes:
+  master_db_data:
+  proxy_db_data:

@@ -7,10 +7,9 @@ FROM ${BASE_IMAGE} AS gems
 
 WORKDIR /app
 
-COPY Gemfile ./
+COPY Gemfile Gemfile.lock ./
 
-RUN bundle lock && \
-    bundle config set --local without 'development test' && \
+RUN bundle config set --local without 'development test' && \
     bundle install --jobs 4 --retry 3
 
 # -- Stage 2: runtime ----------------------------------------------------------─
@@ -41,6 +40,9 @@ COPY . .
 RUN bundle config set --local without 'development test'
 
 # -- Asset precompilation ------------------------------------------------------─
+RUN cp config/database.yml.example config/database.yml && \
+    cp config/dde_sync.yml.example config/dde_sync.yml
+    
 RUN SECRET_KEY_BASE=dummy RAILS_ENV=production \
     bundle exec rails tailwindcss:build assets:precompile
 
