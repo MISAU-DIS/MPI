@@ -1,0 +1,51 @@
+# Development docker compose file for running both master and proxy apps locally, connecting to MySQL and Redis on the host machine.
+services:
+  redis:
+    image: redis:7.0-alpine
+    container_name: mpi-redis
+    ports:
+      - "6380:6379" # Mapped to 6380 on Windows just in case
+
+  master-app:
+    build: .
+    container_name: mpi-master-app
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Allows Docker to reach Windows MySQL
+    ports:
+      - "3000:3000"
+    environment:
+      - MASTER=true
+      - DB_HOST=host.docker.internal
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - DB_NAME=dde_master
+      - REDIS_URL=redis://redis:6379/1
+      - RAILS_ENV=production
+      - SECRET_KEY_BASE=dummy_secret_key_master
+    depends_on:
+      - redis
+
+  proxy-app:
+    build: .
+    container_name: mpi-proxy-app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3001:3000"
+    environment:
+      - MASTER=false
+      - DB_HOST=host.docker.internal
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - DB_NAME=dde_proxy
+      - REDIS_URL=redis://redis:6379/2
+      - RAILS_ENV=production
+      - SECRET_KEY_BASE=dummy_secret_key_proxy
+      - DDE_SYNC_PROTOCOL=http
+      - DDE_SYNC_HOST=master-app:3000 # Proxy talks directly to Master inside Docker!
+      - DDE_SYNC_USER=admin
+      - DDE_SYNC_PASS=admin123
+    depends_on:
+      - redis
