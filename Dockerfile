@@ -7,9 +7,10 @@ FROM ${BASE_IMAGE} AS gems
 
 WORKDIR /app
 
-COPY Gemfile Gemfile.lock ./
+COPY Gemfile ./
 
-RUN bundle config set --local without 'development test' && \
+RUN bundle lock && \
+    bundle config set --local without 'development test' && \
     bundle install --jobs 4 --retry 3
 
 # -- Stage 2: runtime ----------------------------------------------------------─
@@ -40,9 +41,6 @@ COPY . .
 RUN bundle config set --local without 'development test'
 
 # -- Asset precompilation ------------------------------------------------------─
-RUN cp config/database.yml.example config/database.yml && \
-    cp config/dde_sync.yml.example config/dde_sync.yml
-
 RUN SECRET_KEY_BASE=dummy RAILS_ENV=production \
     bundle exec rails tailwindcss:build assets:precompile
 
@@ -111,7 +109,7 @@ RUN cat > /etc/cont-init.d/01-network.sh <<'SCRIPT' && chmod +x /etc/cont-init.d
 set -e
 
 PING_MAX=5
-PORT_MAX=30
+PORT_MAX=5
 
 # -- ping check ----------------------------------------------------------------
 log.sh start "Ping check: $DB_HOST"
@@ -187,7 +185,7 @@ for example in /app/config/*.yml.example; do
   tgt_base="$(resolve_target "$src_base")"
   target="/app/config/$tgt_base"
 
-  if [ ! -s "$target" ] || [ ! -f "$target" ]; then
+  if [[ ! -s "$target" ]]; then
     cat "$example" > "$target"
     log.sh success "  $src_base  →  $tgt_base  (populated)"
   else
@@ -218,9 +216,16 @@ db_run() {
   fi
 }
 
+set -x
+patch_file="db/meta_data/dde4_metadata.sql"
+datetime=$(date '+%Y-%m-%d %H:%M:%S')
+insert="INSERT INTO ar_internal_metadata VALUES ('environment','"${RAILS_ENV}"','"${datetime}"','"${datetime}"');"
+sed -i "s|##INSERT_AR_INTERNAL_METADATA##|${insert}|" "$patch_file"
+
 db_run "Rails database create" bundle exec rails db:create
-db_run "Rails database schema load" bundle exec rails db:schema:load
+db_run "Rails database schema load " bundle exec rails db:schema:load
 db_run "Rails database migrate" bundle exec rails db:migrate
+db_run "Rails database seed" bundle exec rails db:seed
 
 if [ "${MASTER:-false}" = "true" ]; then
   db_run "Rails database seed (MASTER mode)" bundle exec rails db:seed
