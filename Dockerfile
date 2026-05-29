@@ -216,7 +216,6 @@ db_run() {
   fi
 }
 
-set -x
 patch_file="db/meta_data/dde4_metadata.sql"
 datetime=$(date '+%Y-%m-%d %H:%M:%S')
 insert="INSERT INTO ar_internal_metadata VALUES ('environment','"${RAILS_ENV}"','"${datetime}"','"${datetime}"');"
