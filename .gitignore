@@ -41,3 +41,4 @@ node_modules/
 migration/logs/
 migration/data/
 migration/reports/
+docker-compose.local.yml
