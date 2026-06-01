@@ -14,7 +14,6 @@ config/server/*.*
 notes
 development.sql
 development_structure.sql
-schema.rb
 *~
 mockups
 rerun.txt
@@ -33,7 +32,6 @@ erl_crash.dump
 .project
 .byebug_history
 /public/reports/*
-Gemfile.lock
 
 /app/assets/builds/*
 !/app/assets/builds/.keep
