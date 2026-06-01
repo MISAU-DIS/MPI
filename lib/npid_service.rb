@@ -1,4 +1,3 @@
-
 module NpidService
 
   def self.que(couchdb_person)
@@ -10,6 +9,7 @@ module NpidService
   def self.assign(number_of_ids, current_user, location = "")
     available_ids = Npid.where(assigned: false).limit(number_of_ids).distinct
 
+    # EARLY EXIT: Prevent SQL crash and return a clear operational error
     if available_ids.blank?
       raise ActiveRecord::RecordNotFound, "No available NPIDs in the master pool. Please run the faker script or load new NPIDs."
     end
@@ -17,6 +17,7 @@ module NpidService
     location = current_user.location_id if location.blank?
 
     ActiveRecord::Base.transaction do
+      # 1. Map the data safely
       records = available_ids.map do |npid|
         {
           location_id: location.to_i,
@@ -25,9 +26,12 @@ module NpidService
           updated_at: Time.current
         }
       end
+
+      # 2. Safe bulk insert into location_npids
       LocationNpid.insert_all(records)
 
-      Npid.where(id: available_ids.map(&:id)).update_all(assigned: true, updated_at: Time.current)
+      # 3. Safe bulk update the npids table (ZERO-MIGRATION FIX: finding by npid instead of id)
+      Npid.where(npid: available_ids.map(&:npid)).update_all(assigned: true, updated_at: Time.current)
     end
 
     return available_ids
