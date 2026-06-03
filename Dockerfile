@@ -226,11 +226,6 @@ db_run() {
   return "$rc"
 }
 
-patch_file="db/meta_data/dde4_metadata.sql"
-datetime=$(date '+%Y-%m-%d %H:%M:%S')
-insert="INSERT INTO ar_internal_metadata VALUES ('environment','"${RAILS_ENV}"','"${datetime}"','"${datetime}"');"
-sed -i "s|##INSERT_AR_INTERNAL_METADATA##|${insert}|" "$patch_file"
-
 db_run "Rails database create" bundle exec rails db:create
 db_run "Rails database schema load " bundle exec rails db:schema:load
 db_run "Rails database migrate" bundle exec rails db:migrate
