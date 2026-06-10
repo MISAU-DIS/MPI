@@ -205,21 +205,26 @@ cd /app
 db_run() {
   label="$1"; shift
   log.sh start "$label"
-  if "$@"; then
+  output=$("$@" 2>&1)
+  rc=$?
+  [ -n "$output" ] && echo "$output"
+  if [ "$rc" -eq 0 ]; then
     log.sh end "$label"
-  else
-    log.sh failure "$label failed"
-    if [ "${DB_FAIL_EXIT:-true}" = "true" ]; then
-      log.sh failure "DB_FAIL_EXIT=true — terminating container"
-      exit 1
-    fi
+    return 0
   fi
+  log.sh failure "$label failed"
+  if [ "${DB_FAIL_EXIT:-true}" = "true" ]; then
+    case "$output" in
+      *ActiveRecord::ProtectedEnvironmentError*)
+        log.sh warning "Ignoring ActiveRecord::ProtectedEnvironmentError"
+        return 0
+        ;;
+    esac
+    log.sh failure "DB_FAIL_EXIT=true — terminating container"
+    exit 1
+  fi
+  return "$rc"
 }
-
-patch_file="db/meta_data/dde4_metadata.sql"
-datetime=$(date '+%Y-%m-%d %H:%M:%S')
-insert="INSERT INTO ar_internal_metadata VALUES ('environment','"${RAILS_ENV}"','"${datetime}"','"${datetime}"');"
-sed -i "s|##INSERT_AR_INTERNAL_METADATA##|${insert}|" "$patch_file"
 
 db_run "Rails database create" bundle exec rails db:create
 db_run "Rails database schema load " bundle exec rails db:schema:load
