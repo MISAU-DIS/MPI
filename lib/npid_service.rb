@@ -1,4 +1,3 @@
-
 module NpidService
 
   def self.que(couchdb_person)
@@ -8,29 +7,34 @@ module NpidService
   # Assign Npids to a Site/Location.
   # Takes the number of requested IDs and requesting user.
   def self.assign(number_of_ids, current_user, location = "")
-    # Gets available unassigned npids from master npid table.
     available_ids = Npid.where(assigned: false).limit(number_of_ids).distinct
 
-    # Assign the available npids to a site /location.
+    # EARLY EXIT: Prevent SQL crash and return a clear operational error
+    if available_ids.blank?
+      raise ActiveRecord::RecordNotFound, "No available NPIDs in the master pool. Please run the faker script or load new NPIDs."
+    end
 
     location = current_user.location_id if location.blank?
-    npids = 'INSERT into `location_npids` (id, location_id, npid, created_at, updated_at) VALUES '
-    npid_pool_update = 'UPDATE `npids` SET assigned = true, updated_at = now() WHERE id IN ('
 
-    available_ids.each do |npid|
-      npids += "(NULL, #{location.to_i},'#{npid.npid}', now(), now()), "
-      npid_pool_update += "'#{npid.id}', "
-    end
-      npids.chop!.chop!
-      npid_pool_update.chop!.chop!
-      npids += ';'
-      npid_pool_update += ');'
-
-      ActiveRecord::Base.transaction do
-        ActiveRecord::Base.connection.execute(npids)
-        ActiveRecord::Base.connection.execute(npid_pool_update)
+    ActiveRecord::Base.transaction do
+      # 1. Map the data safely
+      records = available_ids.map do |npid|
+        {
+          location_id: location.to_i,
+          npid: npid.npid,
+          created_at: Time.current,
+          updated_at: Time.current
+        }
       end
-      return available_ids
+
+      # 2. Safe bulk insert into location_npids
+      LocationNpid.insert_all(records)
+
+      # 3. Safe bulk update the npids table (ZERO-MIGRATION FIX: finding by npid instead of id)
+      Npid.where(npid: available_ids.map(&:npid)).update_all(assigned: true, updated_at: Time.current)
+    end
+
+    return available_ids
   end
 
   #assigning individual npid to clients
