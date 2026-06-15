@@ -2,19 +2,20 @@
   <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-6">Quick Access</h2>
 
   <div class="space-y-4">
-    <%= link_to "https://ddedashboard.hismalawi.org", target: "_blank", class: "nav-link group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200 hover:translate-x-1 bg-gray-100" do %>
+    <% master_dashboard_url = ENV['MASTER'].to_s.downcase == 'true' ? ENV.fetch('DDE_HOST_URL', '') : "#{ENV.fetch('DDE_SYNC_PROTOCOL', 'https')}://#{ENV.fetch('DDE_SYNC_HOST', 'sisma.misau.gov.mz')}#{ENV.fetch('DDE_SYNC_PATH', '/dde-master')}" %>
+    <%= link_to master_dashboard_url, target: "_blank", class: "nav-link group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200 hover:translate-x-1 bg-gray-100" do %>
       <span class="text-lg group-hover:scale-110 transition">&#127970;</span>
       <div class="flex-1 min-w-0"><span class="sidebar-text font-medium text-sm block truncate">DDE Master Dashboard</span></div>
       <span class="opacity-0 group-hover:opacity-100 transition">→</span>
     <% end %>
 
-    <%= link_to "/v1/sidekiq", target: "_blank", class: "nav-link group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-600 hover:text-white transition-all duration-200 hover:translate-x-1 bg-gray-100" do %>
+    <%= link_to "#{ENV.fetch('DDE_HOST_URL', '')}/v1/sidekiq", target: "_blank", class: "nav-link group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-600 hover:text-white transition-all duration-200 hover:translate-x-1 bg-gray-100" do %>
       <span class="text-lg group-hover:scale-110 transition">&#9881;</span>
       <div class="flex-1 min-w-0"><span class="sidebar-text font-medium text-sm block truncate">Sidekiq </span></div>
       <span class="opacity-0 group-hover:opacity-100 transition">→</span>
     <% end %>
 
-    <%= link_to "/api-docs", target: "_blank", class: "nav-link group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-purple-600 hover:text-white transition-all duration-200 hover:translate-x-1 bg-gray-100" do %>
+    <%= link_to "#{ENV.fetch('DDE_HOST_URL', '')}/api-docs", target: "_blank", class: "nav-link group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-purple-600 hover:text-white transition-all duration-200 hover:translate-x-1 bg-gray-100" do %>
       <span class="text-lg group-hover:scale-110 transition">&#128196;</span>
       <div class="flex-1 min-w-0"><span class="sidebar-text font-medium text-sm block truncate">API Swagger Docs</span></div>
       <span class="opacity-0 group-hover:opacity-100 transition">→</span>
