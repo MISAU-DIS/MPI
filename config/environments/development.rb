@@ -92,4 +92,6 @@ Rails.application.configure do
   config.action_cable.allowed_request_origins = [
     /https?:\/\/.*/  # Allows any HTTP or HTTPS origin
   ]
+  
+  config.hosts.clear
 end
