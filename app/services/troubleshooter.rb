@@ -7,7 +7,7 @@ require 'securerandom'
 class Troubleshooter
   include NetworkHelper
 
-  CONFIG_FILE_PATH = Rails.root.join('config', 'database.yml')
+  CONFIG_FILE_PATH = Rails.root.join('config', 'dde_sync.yml')
   LOCK_FILE_PATH = '/tmp/dde_sync.lock'
 
   def initialize
@@ -25,20 +25,6 @@ class Troubleshooter
     else
       { status: :unknown, message: 'Unknown error type' }
     end
-  end
-
-  def reset_sync_credentials(username:, password:, location_id:)
-    config = load_config
-    sync_config = config[:dde_sync_config] || config['dde_sync_config']
-
-    raise 'Sync configuration not found' unless sync_config
-
-    sync_config[:username]   = username
-    sync_config[:password]   = password
-    sync_config[:location_id] = "#{username}_#{location_id}"
-
-    save_config(config)
-    { status: :ok, message: 'Sync credentials updated successfully.' }
   end
 
   def detect_footprint_conflicts
@@ -93,14 +79,32 @@ class Troubleshooter
   private
 
   # -----------------------------
+  # Config helpers
+  # -----------------------------
+  def load_config
+    # Pass through ERB to ensure ENV tags evaluate correctly in memory
+    yaml_content = ERB.new(File.read(CONFIG_FILE_PATH)).result
+    YAML.safe_load(yaml_content, aliases: true)
+  end
+
+  def get_sync_config
+    # Returns the block matching the current Rails environment (e.g., development, production)
+    @config[Rails.env] || @config[Rails.env.to_sym]
+  end
+
+  # -----------------------------
   # Environment-specific remote
   # -----------------------------
   def remote_host
-    @config[:dde_sync_config][:host]
+    get_sync_config['host'] || get_sync_config[:host]
   end
 
   def remote_port
-    @config[:dde_sync_config][:port]
+    get_sync_config['port'] || get_sync_config[:port]
+  end
+
+  def protocol
+    get_sync_config['protocol'] || get_sync_config[:protocol]
   end
 
   def remote_base_url
@@ -109,69 +113,42 @@ class Troubleshooter
     "#{protocol}://#{host}/v1"
   end
 
-  def protocol
-    @config[:dde_sync_config][:protocol]
-  end
-
   def local_base_url
-    cfg = @config[:dde_local_config]
-    "#{cfg[:protocol]}://#{cfg[:host]}:#{cfg[:port]}/v1"
+    cfg = @config['dde_local_config'] || @config[:dde_local_config]
+    
+    if cfg.present?
+      "#{cfg['protocol'] || cfg[:protocol]}://#{cfg['host'] || cfg[:host]}:#{cfg['port'] || cfg[:port]}/v1"
+    else
+      # Safe fallback for Docker proxy environment
+      "http://localhost:#{ENV.fetch('PORT', 3000)}/v1"
+    end
   end
 
   # -----------------------------
-  # Sync config resolution
+  # Sync config resolution (Read-Only Health Check)
   # -----------------------------
   def resolve_sync_configs
     sync_config = get_sync_config
-    return { status: :error, message: 'Sync configuration not found' } unless sync_config
+    return { status: :error, message: "Sync configuration not found for #{Rails.env} environment." } unless sync_config
 
     username  = sync_config[:username] || sync_config['username']
     password  = sync_config[:password] || sync_config['password']
 
-    return { status: :auth_failed, message: 'Sync username and password not available' } unless username && password
-
-    updated = false
-
-    # Ensure correct protocol/host
-    if (sync_config[:protocol] || sync_config['protocol']).to_s.downcase != protocol
-      sync_config[:protocol] = protocol
-      updated = true
+    unless username && password
+      return { status: :auth_failed, message: 'Sync credentials missing. Please verify DDE_SYNC_USER and DDE_SYNC_PASS environment variables.' }
     end
 
-    if (sync_config[:host] || sync_config['host']) != remote_host
-      sync_config[:host] = remote_host
-      updated = true
-    end
-
-    save_config(sync_config) if updated
-    return { status: :ok, message: 'Sync configuration updated with correct protocol/host' } if updated
-
-    # Try authentication
+    # Perform Read-Only Authentication Tests
     remote_success = authenticate_remote(username, password)
     local_success  = authenticate_local(username, password)
 
-    return { status: :ok, message: 'Sync authentication succeeded (proxy & master)' } if remote_success && local_success
-
-    # Auto-reset password using default user
-    new_password = SecureRandom.hex(12)
-    reset_result = reset_sync_password_via_default_user(username, new_password)
-
-    if reset_result[:status] == :ok
-      sync_config[:password] = new_password
-      save_config(sync_config)
-
-      remote_success = authenticate_remote(username, new_password)
-      local_success = authenticate_local(username, new_password)
-
-      if remote_success && local_success
-        { status: :ok, message: 'Sync password automatically reset and authentication succeeded' }
-      else
-        { status: :auth_failed,
-          message: 'Password reset attempted but authentication still failed. Manual intervention needed.' }
-      end
+    if remote_success && local_success
+      { status: :ok, message: 'Sync authentication succeeded (proxy & master)' }
     else
-      { status: :auth_failed,
-        message: "Automatic password reset failed: #{reset_result[:message]}. Please reset manually." }
+      { 
+        status: :auth_failed, 
+        message: 'Authentication failed. Please verify your configured credentials and ensure the Master API is reachable.' 
+      }
     end
   end
 
@@ -196,69 +173,6 @@ class Troubleshooter
       nil
     end
     response && response.code == 200
-  end
-
-  # -----------------------------
-  # Config helpers
-  # -----------------------------
-  def get_sync_config
-    config = load_config
-    config[:dde_sync_config] || config['dde_sync_config']
-  end
-
-  def load_config
-    YAML.load_file(CONFIG_FILE_PATH, aliases: true)
-  end
-
-  def save_config(new_sync_config)
-    full_config = load_config
-    full_config[:dde_sync_config] ||= {}
-    full_config[:dde_sync_config].merge!(new_sync_config.symbolize_keys)
-
-    File.open(CONFIG_FILE_PATH, 'w') do |f|
-      f.write(full_config.to_yaml)
-    end
-  end
-
-  # -----------------------------
-  # Reset password via default user
-  # -----------------------------
-
-  def reset_sync_password_via_default_user(sync_username, new_password)
-    admin_username = Rails.application.credentials.admin_username
-    admin_password = Rails.application.credentials.admin_password
-
-    return { status: :error, message: 'Admin credentials missing' } unless admin_username && admin_password
-
-    # Authenticate admin
-    login_url = "#{remote_base_url}/login?username=#{admin_username}&password=#{admin_password}"
-    begin
-      login_resp = RestClient.post(login_url, {})
-      token = JSON.parse(login_resp.body)['access_token']
-    rescue StandardError => e
-      return { status: :error, message: "Admin login failed: #{e.message}" }
-    end
-
-    # Update locally
-    sync_user = User.find_by(username: sync_username)
-    if sync_user.present?
-      sync_user.update(password: new_password)
-    else
-      User.create(username: sync_username,
-                  password: new_password,
-                  location_id:)
-    end
-
-    # Update remotely
-    update_url = "#{remote_base_url}/update_password"
-    begin
-      RestClient.post(update_url, { username: sync_username, password: new_password },
-                      { Authorization: token })
-
-      { status: :ok, message: 'Password reset successfully locally and remotely' }
-    rescue RestClient::ExceptionWithResponse => e
-      { status: :error, message: "Remote password reset failed: #{e.response}" }
-    end
   end
 
   # -----------------------------
