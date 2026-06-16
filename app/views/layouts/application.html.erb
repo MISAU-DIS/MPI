@@ -1,4 +1,3 @@
-<!-- app/views/layouts/application.html.erb -->
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
@@ -7,13 +6,9 @@
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
 
-  <!-- Tailwind CDN -->
-
-  <!-- FontAwesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+  
   <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
   <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
   
   <%= javascript_importmap_tags %>
@@ -21,8 +16,7 @@
 
 <body data-controller="page" class="bg-gray-100 text-gray-700 min-h-screen flex flex-col sidebar-collapsed">
 
- <!-- Fixed top header bar -->
-<header class="fixed top-0 left-0 right-0 bg-gray-50/95 backdrop-blur-md border-b border-gray-200/50 h-16 flex items-center justify-between px-6 z-50 shadow-sm transition-all duration-300">
+ <header class="fixed top-0 left-0 right-0 bg-gray-50/95 backdrop-blur-md border-b border-gray-200/50 h-16 flex items-center justify-between px-6 z-50 shadow-sm transition-all duration-300">
   <div class="flex items-center gap-4">
     <button id="hamburgerBtn" aria-label="Toggle sidebar" class="text-gray-600 hover:text-gray-900 focus:outline-none text-xl transition-all duration-200 hover:scale-110 active:scale-95">
       <span class="block w-6 h-0.5 bg-current mb-1.5 transition-all duration-300 hamburger-line-1"></span>
@@ -32,15 +26,12 @@
     <h1 class="text-xl font-bold text-gray-800 tracking-tight">Demographics Data Exchange</h1>
   </div>
 
-  <!-- Right side: facility + version -->
   <div class="flex items-center gap-6 text-sm text-gray-700">
-    <!-- Facility name with icon -->
     <div class="flex items-center gap-2">
       <i class="fa-solid fa-location-dot text-red-500"></i>
       <span id="facility-name" class="font-medium"><%= current_private_ip %></span>
     </div>
 
-    <!-- Version info -->
     <div class="flex items-center gap-2">
       <i class="fab fa-git-alt text-gray-500"></i>
       <span>Version <%= git_version %></span>
@@ -50,12 +41,10 @@
 
   <div class="flex flex-1 pt-16 pb-12">
 
-    <!-- Fixed Sidebar (collapsed default) -->
     <aside id="sidebar" class="fixed left-0 top-16 bottom-12 bg-gray-800 text-gray-200 flex flex-col transition-all duration-300 w-16 shadow-lg z-40 border-r border-gray-700/50">
       
       <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
         <ul class="space-y-1">
-          <!-- Service Control -->
           <li>
             <button 
               type="button"
@@ -66,7 +55,6 @@
               <span class="sidebar-text font-medium hidden">Service Control</span>
             </button>
           </li>
-          <!-- Documentation -->
           <li>
            <button 
             type="button"
@@ -82,7 +70,6 @@
     
     </aside>
 
-    <!-- Main content area -->
     <main data-page-target="content" id="mainContent" class="flex-1 flex flex-col bg-white/50 backdrop-blur-sm ml-16 transition-all duration-300 min-h-0">
       <div class="flex-1 flex flex-col p-8">
         <section class="flex-1 min-h-0">
@@ -94,15 +81,13 @@
     </main>
   </div>
 
-  <!-- Footer -->
   <footer class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200/50 text-gray-500 text-xs h-12 flex items-center justify-between px-6 z-50 shadow-sm">
     <span class="flex items-center gap-2">
       <div class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-      &copy; 2025 HIS Malawi
+      &copy; <%= Time.current.year %> HIS Mozambique
     </span>
   </footer>
 
-  <!-- Sidebar toggle script -->
   <script>
     document.addEventListener("turbo:load", () => {
       const hamburgerBtn = document.getElementById('hamburgerBtn');
