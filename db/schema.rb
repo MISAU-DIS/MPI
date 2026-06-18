@@ -124,7 +124,6 @@ ActiveRecord::Schema[7.0].define(version: 2026_06_01_085153) do
     t.boolean "voided", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["district_id"], name: "fk_mailer_districts_district"
     t.index ["mailer_id"], name: "fk_rails_a93dcc2597"
   end
 
@@ -155,7 +154,6 @@ ActiveRecord::Schema[7.0].define(version: 2026_06_01_085153) do
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.bigint "district_id"
-    t.index ["district_id"], name: "fk_mailing_logs_district"
     t.index ["location_id"], name: "fk_rails_c1f219ee43"
   end
 
