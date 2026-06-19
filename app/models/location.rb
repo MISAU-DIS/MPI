@@ -27,8 +27,10 @@ class Location < ApplicationRecord
     last_updates  = ""
     npids     = LocationNpid.where(location_id: self.id)
     unless npids.blank?
-      max_person = Person.where(location_created_at: self.id).select(["*, MAX(updated_at)"]).limit(1).first rescue nil
+      # Swapped Person for PersonDetail to remove legacy dependency
+      max_person = PersonDetail.where(location_created_at: self.id).select(["*, MAX(updated_at)"]).limit(1).first rescue nil
       update_in_person = max_person.updated_at rescue nil
+      
       location_users  = User.where(location_id: self.id).map(&:user_id)
       max_footprint   = FootPrint.where(["user_id in (?)", location_users]).select(["*, max(updated_at)"]).limit(1).first
       update_in_footprint = max_footprint.updated_at rescue nil
@@ -39,7 +41,6 @@ class Location < ApplicationRecord
         if (Date.today.to_date == update_in_person.to_date)
           status        = "ONLINE"
         end
-      
       end
 
       return status, last_updates
