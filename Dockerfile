@@ -7,10 +7,9 @@ FROM ${BASE_IMAGE} AS gems
 
 WORKDIR /app
 
-COPY Gemfile ./
+COPY Gemfile Gemfile.lock ./
 
-RUN bundle lock && \
-    bundle config set --local without 'development test' && \
+RUN bundle config set --local without 'development test' && \
     bundle install --jobs 4 --retry 3
 
 # -- Stage 2: runtime ----------------------------------------------------------─

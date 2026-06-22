@@ -42,3 +42,4 @@ migration/logs/
 migration/data/
 migration/reports/
 docker-compose.local.yml
+vendor/cache/

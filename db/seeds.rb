@@ -78,14 +78,12 @@ else
   User.where(username: "admin").update_all(default_user: true)
 end
 
-return unless ENV['MASTER'] == 'true'
-
 # -----------------------------
 # Seed Regions (Provinces)
 # -----------------------------
 require 'csv'
 
-puts "Seeding Provinces from CSV..."
+puts "Seeding Regions (Provinces) from CSV..."
 
 csv_path = Rails.root.join('db', 'seeds', 'regions_from_2025.csv')
 
@@ -104,7 +102,7 @@ CSV.foreach(csv_path, headers: true) do |row|
   end
 end
 
-puts "Provinces seeded into table `region` successfully"
+puts "Regions (Provinces) seeded into table `region` successfully"
 
 # -----------------------------
 # Seed Districts from CSV
