@@ -114,7 +114,8 @@ Rails.application.configure do
   config.active_record.dump_schema_after_migration = false
   Rails.application.routes.default_url_options[:host] = ENV.fetch('DDE_HOST_URL', nil)
 
-  config.action_cable.allowed_request_origins = [
-    /https?:\/\/.*/  # Allows any HTTP or HTTPS origin
-  ]
+  if ENV['DDE_HOST_URL'].present?
+      allowed_host = URI(ENV['DDE_HOST_URL']).host
+      config.action_cable.allowed_request_origins = [ "https://#{allowed_host}", "http://#{allowed_host}" ]
+    end
 end

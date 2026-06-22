@@ -135,19 +135,16 @@ class Troubleshooter
     password  = sync_config[:password] || sync_config['password']
 
     unless username && password
-      return { status: :auth_failed, message: 'Sync credentials missing. Please verify DDE_SYNC_USER and DDE_SYNC_PASS environment variables.' }
+      return { status: :auth_failed, message: 'Sync credentials missing. Please verify DDE_SYNC_USER and DDE_SYNC_PASS.' }
     end
 
-    # Perform Read-Only Authentication Tests
-    remote_success = authenticate_remote(username, password)
-    local_success  = authenticate_local(username, password)
-
-    if remote_success && local_success
-      { status: :ok, message: 'Sync authentication succeeded (proxy & master)' }
+    # Strictly test Master API Authentication (Local HTTP auth is unnecessary for SyncJob)
+    if authenticate_remote(username, password)
+      { status: :ok, message: "Sync authentication succeeded with Master API (#{remote_base_url})" }
     else
       { 
         status: :auth_failed, 
-        message: 'Authentication failed. Please verify your configured credentials and ensure the Master API is reachable.' 
+        message: "Authentication failed for user '#{username}' on Master API (#{remote_base_url})." 
       }
     end
   end
