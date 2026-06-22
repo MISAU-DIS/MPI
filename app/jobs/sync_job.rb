@@ -238,6 +238,8 @@ class SyncJob < ApplicationJob
       updated = Config.find_by_config('push_seq_new').update(config_value: record.id.to_i) if response.code == 201
       redo if updated != true
     rescue StandardError => e
+      Rails.logger.error("PUSH CRASHED: #{e.message}")
+      Rails.logger.error("MASTER RESPONSE: #{e.response}") if e.respond_to?(:response)
       log_error(e.message)
     end
   end
@@ -382,9 +384,9 @@ class SyncJob < ApplicationJob
   private
 
   def log_error(error)
-    return if @location_id.blank? || error.to_s.blank?
+    return if @location.blank? || error.to_s.blank?
 
-    existing_error = SyncError.find_by(site_id: @location_id, error: error.to_s)
+    existing_error = SyncError.find_by(site_id: @location, error: error.to_s)
 
     if existing_error
       existing_error.update!(
@@ -393,7 +395,7 @@ class SyncJob < ApplicationJob
       )
     else
       SyncError.create!(
-        site_id: @location_id,
+        site_id: @location,
         incident_time: Time.now,
         error: error.to_s
       )
