@@ -6,4 +6,5 @@ import { createConsumer } from "@rails/actioncable"
 const protocol = "ws"
 const host = window.location.host
 const cableUrl = `${protocol}://${host}/v1/cable`
-export default createConsumer(cableUrl)
+// export default createConsumer(cableUrl)
+export default createConsumer("/v1/cable")
