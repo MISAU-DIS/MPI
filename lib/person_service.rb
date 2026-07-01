@@ -4,8 +4,8 @@ require "people_matching_service/bantu_soundex"
 
 
 module PersonService
-  NPID_LENGTH = 6
-  NATIONAL_ID_LENGTH = 8
+  NPID_LENGTH = 7
+  NATIONAL_ID_LENGTH = 13
 
   def self.reassign_npid(params, current_user)
     person = PersonDetail.find_by_person_uuid(params[:doc_id])
