@@ -421,6 +421,45 @@ paths:
       responses:
         '200':
           description: successful
+  "/v1/mark_person_deceased/{person_uuid}":
+    parameters:
+    - name: person_uuid
+      in: path
+      description: person_uuid
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: mark_person_deceased people_detail
+      tags:
+      - Person
+      description: 'Marks a person as deceased (died = true) and records the death
+        date. This is not a void: the record stays active and searchable. Idempotent:
+        calling it on an already-deceased person returns the person unchanged.'
+      parameters: []
+      responses:
+        '200':
+          description: successful
+        '400':
+          description: deathdate is missing
+        '404':
+          description: person not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deathdate:
+                  type: string
+                  format: date
+                  description: Date of death (YYYY-MM-DD)
+                deathdate_estimated:
+                  type: boolean
+                  default: false
+                  description: True if the date of death is an estimate
+              required:
+              - deathdate
   "/v1/reassign_npid":
     post:
       summary: reassign_npid people_detail

@@ -194,6 +194,45 @@ RSpec.describe 'api/v1/people_details', type: :request do
     end
   end
 
+  path '/v1/mark_person_deceased/{person_uuid}' do
+    parameter name: :person_uuid, in: :path, type: :string, description: 'person_uuid', required: true
+
+    patch('mark_person_deceased people_detail') do
+      tags 'Person'
+      description 'Marks a person as deceased (died = true) and records the death date. ' \
+                  'This is not a void: the record stays active and searchable. ' \
+                  'Idempotent: calling it on an already-deceased person returns the person unchanged.'
+      consumes 'application/json'
+      parameter name: :deceased, in: :body, schema: {
+        type: :object,
+        properties: {
+          deathdate: { type: :string, format: :date, description: 'Date of death (YYYY-MM-DD)' },
+          deathdate_estimated: { type: :boolean, default: false, description: 'True if the date of death is an estimate' }
+        },
+        required: %w[deathdate]
+      }
+
+      response(200, 'successful') do
+        after do |example|
+          example.metadata[:response][:content] = {
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          }
+        end
+        run_test!
+      end
+
+      response(400, 'deathdate is missing') do
+        run_test!
+      end
+
+      response(404, 'person not found') do
+        run_test!
+      end
+    end
+  end
+
   path '/v1/reassign_npid' do
     post('reassign_npid people_detail') do
       tags 'Person'
