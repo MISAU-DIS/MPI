@@ -104,6 +104,15 @@ class Api::V1::PeopleDetailsController < ApplicationController
     end
   end
 
+  def mark_deceased
+    person = PersonService.mark_person_deceased(deceased_params, current_user)
+    unless person.blank?
+      render json: person, status: :ok
+    else
+      render json: {error: 'Person not found'}, status: :not_found
+    end
+  end
+
   private
     def set_pagination_headers(result)
       response.set_header('X-Total-Count', result[:total])
@@ -125,5 +134,14 @@ class Api::V1::PeopleDetailsController < ApplicationController
     def void_params
       params.require(:void_reason)
       {person_uuid: params[:person_uuid], void_reason: params[:void_reason]}
+    end
+
+    def deceased_params
+      params.require(:deathdate)
+      {
+        person_uuid: params[:person_uuid],
+        deathdate: params[:deathdate],
+        deathdate_estimated: params[:deathdate_estimated],
+      }
     end
 end

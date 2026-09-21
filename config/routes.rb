@@ -42,6 +42,7 @@ Rails.application.routes.draw do
   post "v1/assign_npid", to: "api/v1/people#assign_npid"
   post "v1/update_person/", to: "api/v1/people_details#update_person"
   delete "v1/void_person/:person_uuid", to: "api/v1/people_details#void"
+  patch "v1/mark_person_deceased/:person_uuid", to: "api/v1/people_details#mark_deceased"
 
   #npid controller routes
   post "v1/assign_npids", to: "api/v1/npid#assign_npids"

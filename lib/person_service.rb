@@ -526,5 +526,31 @@ module PersonService
     return person
   end
 
+  # Marks a person deceased. Deliberately not a void: a dead person is still a real,
+  # findable identity (family requests, death certificates, duplicate-prevention) — voided
+  # means "this record was a mistake", which a death is not. Idempotent like void_person:
+  # calling this twice on an already-deceased person is a no-op, not an error, since a
+  # retrying client (see sis-h-api's SyncDdePendingPatientsJob) may call it more than once.
+  def self.mark_person_deceased(deceased_details, current_user)
+    person = PersonDetail.unscoped.find_by_person_uuid(deceased_details[:person_uuid])
+    return if person.blank?
+    if person.died == true
+      return person
+    else
+      ActiveRecord::Base.transaction do
+        audit_record = person.dup
+        person.update(died: true,
+                      deathdate: deceased_details[:deathdate],
+                      deathdate_estimated: deceased_details[:deathdate_estimated] || false)
+        audit_person = JSON.parse(audit_record.to_json)
+        audit_person.delete('id')
+        audit_person.delete('updated_at')
+        audit_person.delete('date_registered_date') if audit_person.has_key?('date_registered_date')
+        PersonDetailsAudit.create!(audit_person)
+      end
+    end
+    return person
+  end
+
 end
 
