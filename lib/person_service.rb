@@ -289,7 +289,8 @@ module PersonService
           person_identifiers: PersonIdentifierService.for_person(person),
           npid: person.npid,
           national_id:  person.national_id,
-          doc_id: person.person_uuid
+          doc_id: person.person_uuid,
+          died: person.died
         }
     else
       attributes = {}
