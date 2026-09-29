@@ -233,6 +233,31 @@ RSpec.describe 'api/v1/people_details', type: :request do
     end
   end
 
+  path '/v1/person_deceased_status/{person_uuid}' do
+    parameter name: :person_uuid, in: :path, type: :string, description: 'person_uuid', required: true
+
+    get('person_deceased_status people_detail') do
+      tags 'Person'
+      description 'Returns whether a person is recorded as deceased, along with their ' \
+                  'death date if known. Read-only counterpart to mark_person_deceased.'
+
+      response(200, 'successful') do
+        after do |example|
+          example.metadata[:response][:content] = {
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          }
+        end
+        run_test!
+      end
+
+      response(404, 'person not found') do
+        run_test!
+      end
+    end
+  end
+
   path '/v1/reassign_npid' do
     post('reassign_npid people_detail') do
       tags 'Person'

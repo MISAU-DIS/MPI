@@ -552,5 +552,22 @@ module PersonService
     return person
   end
 
+  # Read-only counterpart to mark_person_deceased. Looks up by person_uuid the same way
+  # (unscoped, so a voided person's status can still be checked) and returns nil when
+  # the person doesn't exist, matching the void_person/mark_person_deceased convention
+  # the controller already checks for with `.blank?`.
+  def self.person_deceased_status(person_uuid)
+    person = PersonDetail.unscoped.find_by_person_uuid(person_uuid)
+    return if person.blank?
+
+    {
+      person_uuid: person.person_uuid,
+      npid: person.npid,
+      died: person.died,
+      deathdate: person.deathdate,
+      deathdate_estimated: person.deathdate_estimated
+    }
+  end
+
 end
 

@@ -460,6 +460,26 @@ paths:
                   description: True if the date of death is an estimate
               required:
               - deathdate
+  "/v1/person_deceased_status/{person_uuid}":
+    parameters:
+    - name: person_uuid
+      in: path
+      description: person_uuid
+      required: true
+      schema:
+        type: string
+    get:
+      summary: person_deceased_status people_detail
+      tags:
+      - Person
+      description: Returns whether a person is recorded as deceased, along with
+        their death date if known. Read-only counterpart to mark_person_deceased.
+      parameters: []
+      responses:
+        '200':
+          description: successful
+        '404':
+          description: person not found
   "/v1/reassign_npid":
     post:
       summary: reassign_npid people_detail
