@@ -113,6 +113,15 @@ class Api::V1::PeopleDetailsController < ApplicationController
     end
   end
 
+  def deceased_status
+    status = PersonService.person_deceased_status(params[:person_uuid])
+    unless status.blank?
+      render json: status, status: :ok
+    else
+      render json: {error: 'Person not found'}, status: :not_found
+    end
+  end
+
   private
     def set_pagination_headers(result)
       response.set_header('X-Total-Count', result[:total])
