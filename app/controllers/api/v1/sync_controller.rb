@@ -11,6 +11,10 @@ module Api
       before_action :validate_foot_print_source, only: [:pushed_footprints]
       after_action :update_movement_cache, only: [:pushed_footprints]
 
+      rescue_from SyncService::RejectedRecordError do |e|
+        render json: { msg: e.message }, status: :unprocessable_entity
+      end
+
       def pull_updates_new
         records_changed = SyncService.person_changes_new(update_params)
 

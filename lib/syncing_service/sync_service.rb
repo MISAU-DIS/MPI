@@ -1,6 +1,10 @@
 module SyncService
+  # Raised when a pushed record cannot be accepted; the message is returned to the proxy.
+  class RejectedRecordError < StandardError; end
 
-  config = YAML.load_file('config/database.yml', aliases: true)
+  # database.yml is an ERB template (BATCH_SIZE comes from ENV), so it must be rendered before parsing,
+  # otherwise the batch size is read as the raw template string and becomes 0 (every pull returns nothing)
+  config = YAML.load(ERB.new(File.read('config/database.yml')).result, aliases: true)
   @batch = config[:batch_size][:batch].to_i
 
 
@@ -32,6 +36,8 @@ module SyncService
     return {status: 200} if push_seq.push_seq > data[:update_seq].to_i # Skip data if has already been tracked
 
     person = PersonDetail.unscoped.find_by_person_uuid(data[:person_uuid])
+    raise RejectedRecordError, "Cannot update unknown person #{data[:person_uuid]}: its creation was not pushed yet" if person.blank?
+
     current_seq = data[:update_seq].to_i
     person_identifiers = data.delete(:person_identifiers)
     data.delete('id')
@@ -57,9 +63,11 @@ module SyncService
     if push_seq.blank?
       push_seq = PushTracker.create!(site_id: data[:location_updated_at].to_i,push_seq: 0, push_type: 'new')
     end
-    return {status: 200} if push_seq.push_seq > data[:id].to_i # Skip data if has already been tracked
-
     person = PersonDetail.unscoped.find_by_person_uuid(data[:person_uuid])
+    # Skip data if already tracked. The tracker alone is not trusted: it can be ahead of the proxy's ids
+    # (proxy rebuilt/restored), so a record the master does not hold is still accepted.
+    return {status: 200} if push_seq.push_seq > data[:id].to_i && person.present?
+
     current_seq = data[:id].to_i
     person_identifiers = data.delete(:person_identifiers)
     data.delete('id')
@@ -68,8 +76,12 @@ module SyncService
     data.delete('update_seq')
     ActiveRecord::Base.transaction do
       if person.blank?
+        # NPIDs are only ever created on the master, so an unknown one is rejected, never inserted
+        location_npid = LocationNpid.unscoped.find_by_npid(data[:npid])
+        raise RejectedRecordError, "NPID #{data[:npid]} is not known to the master" if location_npid.blank?
+
         person = PersonDetail.create!(data)
-        LocationNpid.unscoped.find_by_npid(data[:npid]).update(assigned: true)
+        location_npid.update(assigned: true)
       else
         person.update(data)
         audit_record = JSON.parse(person.to_json)
@@ -80,7 +92,7 @@ module SyncService
         PersonDetailsAudit.create!(audit_record)
       end
       PersonIdentifierService.sync(person, person_identifiers)
-      push_seq.update(push_seq: current_seq)
+      push_seq.update(push_seq: [push_seq.push_seq, current_seq].max)
       {status: 200, push_seq: current_seq}
     end
   end
