@@ -231,16 +231,23 @@ class SyncJob < ApplicationJob
     records_to_push = PersonDetail.unscoped.where('person_details.id > ? AND person_details.location_updated_at = ?',
                                                   push_seq, @location).order(:id).limit(100)
 
-    # PUSH UPDATES
+    # The counter must only move past records the master dealt with, otherwise a later success
+    # would skip a failed record forever. A temporary failure (network, server error) stops the
+    # push so it is retried next sync. A rejection (422, e.g. unknown NPID) is permanent: it is
+    # recorded in sync_errors and the push carries on.
     records_to_push.each do |record|
-      response = RestClient.post(url, format_payload(record), { Authorization: @token })
-      redo if response.code != 201
-      updated = Config.find_by_config('push_seq_new').update(config_value: record.id.to_i) if response.code == 201
-      redo if updated != true
-    rescue StandardError => e
-      Rails.logger.error("PUSH CRASHED: #{e.message}")
-      Rails.logger.error("MASTER RESPONSE: #{e.response}") if e.respond_to?(:response)
-      log_error(e.message)
+      what = "person #{record.id} (uuid #{record.person_uuid}, npid #{record.npid})"
+      begin
+        response = RestClient.post(url, format_payload(record), { Authorization: @token })
+        raise "Unexpected response #{response.code} pushing #{what}" unless response.code == 201
+      rescue RestClient::UnprocessableEntity => e
+        log_push_failure(e, what, skipped: true)
+      rescue StandardError => e
+        log_push_failure(e, what)
+        break
+      end
+
+      Config.find_by_config('push_seq_new').update!(config_value: record.id.to_i)
     end
   end
 
@@ -252,17 +259,29 @@ class SyncJob < ApplicationJob
     records_to_push = PersonDetail.unscoped.joins(:person_details_audit).where('person_details.location_updated_at = ?
         AND person_details_audits.id > ?', @location, push_seq).order('person_details_audits.id').limit(100).select('person_details.*,person_details_audits.id as update_seq')
 
-    # PUSH UPDATES
+    # Temporary failures stop the push, rejections (422) are recorded and skipped, see push_records_new
     records_to_push.each do |record|
-      response = RestClient.post(url, format_payload(record), { Authorization: @token })
-      redo if response.code != 201
-      if response.code == 201
-        updated = Config.find_by_config('push_seq_update').update(config_value: record.update_seq.to_i)
+      what = "update #{record.update_seq} (uuid #{record.person_uuid}, npid #{record.npid})"
+      begin
+        response = RestClient.post(url, format_payload(record), { Authorization: @token })
+        raise "Unexpected response #{response.code} pushing #{what}" unless response.code == 201
+      rescue RestClient::UnprocessableEntity => e
+        log_push_failure(e, what, skipped: true)
+      rescue StandardError => e
+        log_push_failure(e, what)
+        break
       end
-      redo if updated != true
-    rescue StandardError => e
-      log_error(e.message)
+
+      Config.find_by_config('push_seq_update').update!(config_value: record.update_seq.to_i)
     end
+  end
+
+  def log_push_failure(error, what, skipped: false)
+    body = error.respond_to?(:response) ? error.response&.body : nil
+    message = [error.message, body.presence].compact.join(': ')
+    message = "#{what}: #{message}"
+    Rails.logger.error("PUSH #{skipped ? 'SKIPPED' : 'STOPPED'} at #{message}")
+    log_error(message)
   end
 
   def format_payload(person)
