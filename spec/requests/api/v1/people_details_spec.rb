@@ -194,6 +194,45 @@ RSpec.describe 'api/v1/people_details', type: :request do
     end
   end
 
+  path '/v1/reactivate_person/{person_uuid}' do
+    parameter name: :person_uuid, in: :path, type: :string, description: 'person_uuid', required: true
+
+    patch('reactivate_person people_detail') do
+      tags 'Person'
+      description 'Reverses void_person: sets voided back to false and records why. ' \
+                  'void_reason/voided_by/date_voided are left untouched as history of the ' \
+                  'last void. Idempotent: calling it on an already-active person returns ' \
+                  'the person unchanged.'
+      consumes 'application/json'
+      parameter name: :reactivation, in: :body, schema: {
+        type: :object,
+        properties: {
+          reactivation_reason: { type: :string, description: 'Why the person is being reactivated' }
+        },
+        required: %w[reactivation_reason]
+      }
+
+      response(200, 'successful') do
+        after do |example|
+          example.metadata[:response][:content] = {
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          }
+        end
+        run_test!
+      end
+
+      response(400, 'reactivation_reason is missing') do
+        run_test!
+      end
+
+      response(404, 'person not found') do
+        run_test!
+      end
+    end
+  end
+
   path '/v1/mark_person_deceased/{person_uuid}' do
     parameter name: :person_uuid, in: :path, type: :string, description: 'person_uuid', required: true
 

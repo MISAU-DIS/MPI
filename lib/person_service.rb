@@ -527,6 +527,33 @@ module PersonService
     return person
   end
 
+  # Reverses void_person. Only touches voided/void_reason/date_voided/voided_by via the
+  # `voided: false` flip plus the new reactivation_* trio — void_reason/date_voided/voided_by
+  # are left as-is, so the live row still shows why/when/by whom it was last voided even
+  # after reactivation; that history (and the pre-reactivation state) is also preserved in
+  # person_details_audits, same as every other mutation here. Idempotent like void_person:
+  # reactivating an already-active person is a no-op, not an error.
+  def self.reactivate_person(reactivate_details, current_user)
+    person = PersonDetail.unscoped.find_by_person_uuid(reactivate_details[:person_uuid])
+    return if person.blank?
+    if person.voided == false
+      return person
+    else
+      ActiveRecord::Base.transaction do
+        audit_record = person.dup
+        person.update(voided: false,
+                      reactivation_reason: reactivate_details[:reactivation_reason],
+                      date_reactivated: Time.now,
+                      reactivated_by: current_user.id)
+        audit_person = JSON.parse(audit_record.to_json)
+        audit_person.delete('id')
+        audit_person.delete('updated_at')
+        PersonDetailsAudit.create!(audit_person)
+      end
+    end
+    return person
+  end
+
   # Marks a person deceased. Deliberately not a void: a dead person is still a real,
   # findable identity (family requests, death certificates, duplicate-prevention) — voided
   # means "this record was a mistake", which a death is not. Idempotent like void_person:
