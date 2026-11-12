@@ -104,6 +104,15 @@ class Api::V1::PeopleDetailsController < ApplicationController
     end
   end
 
+  def reactivate
+    person = PersonService.reactivate_person(reactivate_params, current_user)
+    unless person.blank?
+      render json: person, status: :ok
+    else
+      render json: {error: 'Person not found'}, status: :not_found
+    end
+  end
+
   def mark_deceased
     person = PersonService.mark_person_deceased(deceased_params, current_user)
     unless person.blank?
@@ -143,6 +152,11 @@ class Api::V1::PeopleDetailsController < ApplicationController
     def void_params
       params.require(:void_reason)
       {person_uuid: params[:person_uuid], void_reason: params[:void_reason]}
+    end
+
+    def reactivate_params
+      params.require(:reactivation_reason)
+      {person_uuid: params[:person_uuid], reactivation_reason: params[:reactivation_reason]}
     end
 
     def deceased_params
