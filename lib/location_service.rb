@@ -86,8 +86,8 @@ module LocationService
         ON m.location_tag_id = location_tags.location_tag_id
         INNER JOIN locations l ON l.location_id = m.location_id").select("location_tags.*")
       
-      npids     = LocationNpid.where(location_id: l.location_id)
-      assigned  = LocationNpid.where(["location_id = ? and assigned = 1", l.location_id])
+      unassigned = LocationNpid.where(location_id: l.location_id).count
+      assigned   = LocationNpid.unscoped.where(location_id: l.location_id, assigned: true).count
 
       #status, last_updated = l.online?
 
@@ -102,8 +102,8 @@ module LocationService
         host: l.ip_address,
         #sync_status: status,
         #last_updated: last_updated,
-        allocated: npids.count,
-        assigned: assigned.count,
+        allocated: unassigned + assigned,
+        assigned: assigned,
       }
     end
 

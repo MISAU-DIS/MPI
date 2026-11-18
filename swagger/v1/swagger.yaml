@@ -515,6 +515,31 @@ paths:
           description: successful
         '404':
           description: person not found
+  "/v1/monitoring":
+    get:
+      summary: monitoring
+      tags:
+      - Monitoring
+      description: 'Monitoring data for the proxy''s own location: the location
+        itself, the local NPID lot (unassigned, assigned, allocated), NPIDs assigned
+        per day over the last N days, the last sync with the master (last success,
+        last attempt and since when it has been failing) and the number of records
+        still to push to the master. A sync counts as successful when authentication,
+        every pull and every push completed without a connection or server error;
+        records the master rejects (422) do not fail the sync.'
+      parameters:
+      - name: days
+        in: query
+        description: Number of days for the assignments per day, including today
+          (1 to 365, default 30)
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: successful
+        '401':
+          description: not authorized
   "/v1/reassign_npid":
     post:
       summary: reassign_npid people_detail
