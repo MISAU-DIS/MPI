@@ -62,6 +62,7 @@ module MonitoringService
       last_attempt_at: status&.last_attempt_at&.iso8601,
       last_attempt_ok: status&.last_attempt_ok,
       last_attempt_error: status&.last_attempt_error,
+      last_attempt_error_code: status&.last_attempt_error_code,
       failing_since: status&.failing_since&.iso8601
     }
   end

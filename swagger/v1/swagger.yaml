@@ -540,6 +540,21 @@ paths:
           description: successful
         '401':
           description: not authorized
+  "/v1/diagnostics":
+    get:
+      summary: diagnostics
+      tags:
+      - Monitoring
+      description: 'Installation check run on demand, with no patient data written.
+        Checks the sync user and its location, the local database, the local NPID
+        stock, and the master: that it answers, that the sync user can log in, and
+        that it accepts requests from this proxy (IP whitelist). Each check returns
+        a status (ok, fail, skipped), a reason code and a technical detail.'
+      responses:
+        '200':
+          description: successful
+        '401':
+          description: not authorized
   "/v1/reassign_npid":
     post:
       summary: reassign_npid people_detail

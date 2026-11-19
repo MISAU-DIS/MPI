@@ -44,6 +44,7 @@ class SyncJob < ApplicationJob
     end
     attempted_at = Time.current
     @sync_failure = nil
+    @sync_failure_code = nil
     begin
       clear_errors
       broadcast('Starting synchronization...', level: :info)
@@ -428,6 +429,7 @@ class SyncJob < ApplicationJob
   def sync_failed(error)
     return if error.is_a?(RestClient::UnprocessableEntity)
 
+    @sync_failure_code ||= MasterErrorClassifier.code(error)
     @sync_failure ||= error.message
   end
 
@@ -436,7 +438,7 @@ class SyncJob < ApplicationJob
     if @sync_failure.nil?
       status.record_success!(attempted_at)
     else
-      status.record_failure!(attempted_at, @sync_failure)
+      status.record_failure!(attempted_at, @sync_failure, @sync_failure_code)
     end
   rescue StandardError => e
     Rails.logger.error("SyncJob could not record the sync result: #{e.message}")
