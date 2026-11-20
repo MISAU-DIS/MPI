@@ -42,6 +42,9 @@ class SyncJob < ApplicationJob
     else
       FileUtils.touch '/tmp/dde_sync.lock'
     end
+    attempted_at = Time.current
+    @sync_failure = nil
+    @sync_failure_code = nil
     begin
       clear_errors
       broadcast('Starting synchronization...', level: :info)
@@ -69,10 +72,16 @@ class SyncJob < ApplicationJob
       push_errors
       broadcast('Push sync errors.', level: :info)
 
-      broadcast('Synchronization completed successfully!', level: :success)
+      if @sync_failure.nil?
+        broadcast('Synchronization completed successfully!', level: :success)
+      else
+        broadcast("Synchronization finished with errors: #{@sync_failure}", level: :error)
+      end
     rescue StandardError => e
+      sync_failed(e)
       log_error(e.message)
     ensure
+      record_sync_result(attempted_at)
       FileUtils.rm '/tmp/dde_sync.lock' if File.exist?('/tmp/dde_sync.lock')
     end
   end
@@ -148,6 +157,7 @@ class SyncJob < ApplicationJob
         end
       end
     rescue StandardError => e
+      sync_failed(e)
       log_error(e.message)
     end
   end
@@ -192,6 +202,7 @@ class SyncJob < ApplicationJob
         end
       end
     rescue StandardError => e
+      sync_failed(e)
       log_error(e.message)
     end
   end
@@ -219,6 +230,7 @@ class SyncJob < ApplicationJob
         end
       end
     rescue StandardError => e
+      sync_failed(e)
       log_error(e.message)
     end
   end
@@ -243,6 +255,7 @@ class SyncJob < ApplicationJob
       rescue RestClient::UnprocessableEntity => e
         log_push_failure(e, what, skipped: true)
       rescue StandardError => e
+        sync_failed(e)
         log_push_failure(e, what)
         break
       end
@@ -268,6 +281,7 @@ class SyncJob < ApplicationJob
       rescue RestClient::UnprocessableEntity => e
         log_push_failure(e, what, skipped: true)
       rescue StandardError => e
+        sync_failed(e)
         log_push_failure(e, what)
         break
       end
@@ -343,10 +357,12 @@ class SyncJob < ApplicationJob
         response = RestClient.post(url, foot.as_json, { Authorization: @token })
         foot.foot_print_id if response.code == 201 # Collect successful IDs
       rescue RestClient::ExceptionWithResponse => e
+        sync_failed(e)
         Rails.logger.error("Failed to sync footprint #{foot.foot_print_id}: #{e.response}")
         log_error("#{e.message} #{foot.foot_print_id}: #{e.response}")
         nil
       rescue StandardError => e
+        sync_failed(e)
         Rails.logger.error("Unexpected error syncing footprint #{foot.foot_print_id}: #{e.message}")
         log_error("#{e.message} #{foot.foot_print_id}: #{e.response}")
         nil
@@ -365,10 +381,12 @@ class SyncJob < ApplicationJob
         response = RestClient.post(url, error.as_json, { Authorization: @token })
         error.id if response.code == 201 # Collect successful IDs
       rescue RestClient::ExceptionWithResponse => e
+        sync_failed(e)
         Rails.logger.error("Failed to sync Error #{error.id}: #{e.response}")
         log_error("msg: #{e.message} error_id: #{error.id}: response: #{e.response}")
         nil
       rescue StandardError => e
+        sync_failed(e)
         Rails.logger.error("Unexpected error syncing Error #{error.id}: #{e.message}")
         log_error("msg: #{e.message} error_id: #{error.id}: response: #{e.response}")
         nil
@@ -407,6 +425,24 @@ class SyncJob < ApplicationJob
   end
 
   private
+
+  def sync_failed(error)
+    return if error.is_a?(RestClient::UnprocessableEntity)
+
+    @sync_failure_code ||= MasterErrorClassifier.code(error)
+    @sync_failure ||= error.message
+  end
+
+  def record_sync_result(attempted_at)
+    status = SyncStatus.current
+    if @sync_failure.nil?
+      status.record_success!(attempted_at)
+    else
+      status.record_failure!(attempted_at, @sync_failure, @sync_failure_code)
+    end
+  rescue StandardError => e
+    Rails.logger.error("SyncJob could not record the sync result: #{e.message}")
+  end
 
   def log_error(error)
     return if @location.blank? || error.to_s.blank?
