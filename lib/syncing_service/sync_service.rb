@@ -33,7 +33,12 @@ module SyncService
     if push_seq.blank?
       push_seq = PushTracker.create!(site_id: data[:location_updated_at].to_i,push_seq: 0, push_type: 'update')
     end
-    return {status: 200} if push_seq.push_seq > data[:update_seq].to_i # Skip data if has already been tracked
+    # Skip data if has already been tracked. A resend (a proxy retrying a held record) is applied
+    # anyway: the tracker is per site, so it moves past a held update as soon as any later update
+    # from that site arrives. Every push carries the person's full current record, so applying it
+    # again is safe.
+    resend = resend?(data)
+    return {status: 200} if push_seq.push_seq > data[:update_seq].to_i && !resend
 
     person = PersonDetail.unscoped.find_by_person_uuid(data[:person_uuid])
     raise RejectedRecordError, "Cannot update unknown person #{data[:person_uuid]}: its creation was not pushed yet" if person.blank?
@@ -41,19 +46,20 @@ module SyncService
     current_seq = data[:update_seq].to_i
     person_identifiers = data.delete(:person_identifiers)
     data.delete('id')
+    data.delete(:resend)
     data.delete('created_at')
     data.delete('updated_at')
     data.delete('update_seq')
     ActiveRecord::Base.transaction do
         audit_record = JSON.parse(person.dup.to_json)
-        person.update(data)
+        person.update!(data)
         audit_record.delete('id')
         audit_record.delete('created_at')
         audit_record.delete('updated_at')
         audit_record.delete('update_seq')
         PersonDetailsAudit.create!(audit_record)
         PersonIdentifierService.sync(person, person_identifiers)
-        push_seq.update(push_seq: current_seq)
+        push_seq.update(push_seq: [push_seq.push_seq, current_seq].max)
         {status: 200, push_seq: current_seq}
     end
   end
@@ -66,11 +72,12 @@ module SyncService
     person = PersonDetail.unscoped.find_by_person_uuid(data[:person_uuid])
     # Skip data if already tracked. The tracker alone is not trusted: it can be ahead of the proxy's ids
     # (proxy rebuilt/restored), so a record the master does not hold is still accepted.
-    return {status: 200} if push_seq.push_seq > data[:id].to_i && person.present?
+    return {status: 200} if push_seq.push_seq > data[:id].to_i && person.present? && !resend?(data)
 
     current_seq = data[:id].to_i
     person_identifiers = data.delete(:person_identifiers)
     data.delete('id')
+    data.delete(:resend)
     data.delete('created_at')
     data.delete('updated_at')
     data.delete('update_seq')
@@ -83,7 +90,7 @@ module SyncService
         person = PersonDetail.create!(data)
         location_npid.update(assigned: true)
       else
-        person.update(data)
+        person.update!(data)
         audit_record = JSON.parse(person.to_json)
         audit_record.delete('id')
         audit_record.delete('created_at')
@@ -139,5 +146,10 @@ module SyncService
         AND se.created_at = latest_se.latest_created_at
     SQL
     .order('se.created_at DESC')
+  end
+
+  # A proxy retrying a record from its waiting room (sync_holds) sends resend=true.
+  def self.resend?(data)
+    ActiveModel::Type::Boolean.new.cast(data[:resend]) == true
   end
 end

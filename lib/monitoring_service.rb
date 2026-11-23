@@ -12,7 +12,19 @@ module MonitoringService
       npids: npid_counts(location),
       assignments: assignments(location, days),
       sync: sync_details,
-      push_queue: push_queue(location)
+      push_queue: push_queue(location),
+      on_hold: on_hold
+    }
+  end
+
+  # Records in the sync waiting room (SyncHold): could not be applied or were rejected by the
+  # master, and are retried every sync.
+  def self.on_hold
+    {
+      total: SyncHold.count,
+      pull: SyncHold.pulls.count,
+      push: SyncHold.pushes.count,
+      oldest_since: SyncHold.minimum(:first_failed_at)&.iso8601
     }
   end
 
