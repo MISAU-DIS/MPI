@@ -230,7 +230,9 @@ class SyncJob < ApplicationJob
 
     holds.each do |hold|
       person = PersonDetail.unscoped.find_by(person_uuid: hold.person_uuid)
-      next hold.destroy if person.nil?
+      # Gone, or last changed at another site: the master only takes it from that site (511)
+      # and already has that newer version. Nothing left for this site to send.
+      next hold.destroy if person.nil? || person.location_updated_at != @location
 
       endpoint = hold.direction == 'push_new' ? 'push_changes_new' : 'push_changes_updates'
       payload = format_payload(person).merge(resend: true)
@@ -242,14 +244,14 @@ class SyncJob < ApplicationJob
 
   # Once per proxy: people inactivated before their first push were rejected by masters older
   # than this fix ("Person detail must exist") and skipped for good. Queue every voided person
-  # created here and already behind the push marker; the master creates the missing ones and
-  # simply refreshes the others.
+  # this site last changed (the same rule as push_records_new) and already behind the push
+  # marker; the master creates the missing ones and simply refreshes the others.
   def queue_voided_resend_once
     return if Config.exists?(config: VOIDED_RESEND_CONFIG)
 
     push_seq = Config.find_by_config('push_seq_new')['config_value'].to_i
     PersonDetail.unscoped
-                .where(voided: true, location_created_at: @location)
+                .where(voided: true, location_updated_at: @location)
                 .where('id <= ?', push_seq)
                 .find_each do |person|
       next if SyncHold.exists?(direction: 'push_new', person_uuid: person.person_uuid)
