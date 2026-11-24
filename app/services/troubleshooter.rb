@@ -176,8 +176,11 @@ class Troubleshooter
   # Sync job helpers
   # -----------------------------
   def sync_job_running?
+    # The payload holds class names as strings; jobs run through ActiveJob carry the real
+    # class in 'wrapped'. Comparing with the SyncJob constant itself never matched.
     Sidekiq::Workers.new.any? do |_process_id, _thread_id, work|
-      work['payload']['class'] == SyncJob
+      payload = work['payload'] || {}
+      [payload['class'], payload['wrapped']].map(&:to_s).include?('SyncJob')
     end
   end
 end

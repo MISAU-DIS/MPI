@@ -35,13 +35,16 @@ class SyncJob < ApplicationJob
     start_syncing
   end
 
+  LOCK_FILE = '/tmp/dde_sync.lock'.freeze
+  # A sync killed half-way (power cut, restart) leaves its lock behind. Without an expiry every
+  # later sync would give up forever, so a lock older than this is treated as abandoned.
+  LOCK_STALE_AFTER = 2.hours
+  HOLD_RETRY_LIMIT = 200
+  VOIDED_RESEND_CONFIG = 'resend_voided_people_v1'.freeze
+
   def start_syncing
-    if File.exist?('/tmp/dde_sync.lock')
-      puts 'Another process running!'
-      exit
-    else
-      FileUtils.touch '/tmp/dde_sync.lock'
-    end
+    return unless acquire_lock
+
     attempted_at = Time.current
     @sync_failure = nil
     @sync_failure_code = nil
@@ -56,6 +59,11 @@ class SyncJob < ApplicationJob
 
       pull_updated_records
       broadcast('Pull updated records.', level: :info)
+
+      retry_pull_holds
+      queue_voided_resend_once
+      retry_push_holds
+      broadcast('Retried records on hold.', level: :info)
 
       push_records_new
       broadcast('Push new records.', level: :info)
@@ -82,8 +90,22 @@ class SyncJob < ApplicationJob
       log_error(e.message)
     ensure
       record_sync_result(attempted_at)
-      FileUtils.rm '/tmp/dde_sync.lock' if File.exist?('/tmp/dde_sync.lock')
+      FileUtils.rm LOCK_FILE if File.exist?(LOCK_FILE)
     end
+  end
+
+  def acquire_lock
+    if File.exist?(LOCK_FILE)
+      if File.mtime(LOCK_FILE) > LOCK_STALE_AFTER.ago
+        Rails.logger.info('SyncJob: another sync is running, skipping this run.')
+        return false
+      end
+
+      Rails.logger.warn("SyncJob: removing a sync lock older than #{LOCK_STALE_AFTER.inspect} (abandoned sync).")
+    end
+
+    FileUtils.touch LOCK_FILE
+    true
   end
 
   def authorize
@@ -121,90 +143,126 @@ class SyncJob < ApplicationJob
   end
 
   def pull_new_records
-    pull_seq = Config.find_by_config('pull_seq_new')['config_value'].to_i
-    url = "#{@base_url}/person_changes_new?site_id=#{@location}&pull_seq=#{pull_seq}"
-    begin
-      updates = JSON.parse(RestClient.get(url, { Authorization: @token }))
-
-      updates.each do |record|
-        person = PersonDetail.unscoped.find_by(person_uuid: record['person_uuid'])
-        pull_seq = record['id'].to_i
-        person_identifiers = record.delete('person_identifiers')
-        record.delete('id')
-        record.delete('created_at')
-        record.delete('updated_at')
-        ActiveRecord::Base.transaction do
-          if person.blank?
-            if PersonDetail.exists?(npid: record['npid'])
-              log_error("Duplicate NPID detected (#{record['npid']}) for incoming UUID #{record['person_uuid']}")
-              next
-            elsif PersonDetail.exists?(national_id: record['national_id']) && record['national_id'].present?
-              log_error("Duplicate National ID detected (#{record['national_id']}) \
-                for incomming UUID: #{record['person_uuid']}, national_id: #{record['national_id']}")
-              next
-            end
-            person = PersonDetail.create!(record)
-          else
-            person.update(record)
-            audit_record = JSON.parse(person.to_json)
-            audit_record.delete('id')
-            audit_record.delete('created_at')
-            audit_record.delete('updated_at')
-            PersonDetailsAudit.create!(audit_record)
-          end
-          PersonIdentifierService.sync(person, person_identifiers)
-          Config.where(config: 'pull_seq_new').update(config_value: pull_seq)
-        end
-      end
-    rescue StandardError => e
-      sync_failed(e)
-      log_error(e.message)
-    end
+    pull_records('pull_new', 'pull_seq_new', 'person_changes_new', 'id')
   end
 
   def pull_updated_records
-    pull_seq = Config.find_by_config('pull_seq_update')['config_value'].to_i
-    url = "#{@base_url}/person_changes_updates?site_id=#{@location}&pull_seq=#{pull_seq}"
+    pull_records('pull_update', 'pull_seq_update', 'person_changes_updates', 'update_seq')
+  end
+
+  # Fetching the batch can fail (network, master down): then nothing moves and the next sync tries
+  # again. A record that can't be applied no longer stops the batch: it goes to the waiting room
+  # (SyncHold) and the marker moves on, so one bad record can never block a site's pull.
+  def pull_records(direction, seq_config, endpoint, seq_key)
+    pull_seq = Config.find_by_config(seq_config)['config_value'].to_i
+    url = "#{@base_url}/#{endpoint}?site_id=#{@location}&pull_seq=#{pull_seq}"
 
     begin
       updates = JSON.parse(RestClient.get(url, { Authorization: @token }))
-
-      updates.each do |record|
-        person = PersonDetail.unscoped.find_by(person_uuid: record['person_uuid'])
-        pull_seq = record['update_seq'].to_i
-        person_identifiers = record.delete('person_identifiers')
-        record.delete('id')
-        record.delete('created_at')
-        record.delete('updated_at')
-        record.delete('update_seq')
-        ActiveRecord::Base.transaction do
-          if person.blank?
-            if PersonDetail.exists?(npid: record['npid'])
-              log_error("Duplicate NPID detected (#{record['npid']}) for incoming UUID #{record['person_uuid']}")
-              next
-            elsif PersonDetail.exists?(national_id: record['national_id']) && record['national_id'].present?
-              log_error("Duplicate National ID detected (#{record['national_id']}) \
-                for incomming UUID: #{record['person_uuid']}, national_id: #{record['national_id']}")
-              next
-            end
-            person = PersonDetail.create!(record)
-          else
-            person.update(record)
-            audit_record = JSON.parse(person.to_json)
-            audit_record.delete('id')
-            audit_record.delete('created_at')
-            audit_record.delete('updated_at')
-            audit_record.delete('update_seq')
-            PersonDetailsAudit.create!(audit_record)
-          end
-          PersonIdentifierService.sync(person, person_identifiers)
-          Config.where(config: 'pull_seq_update').update(config_value: pull_seq)
-        end
-      end
     rescue StandardError => e
       sync_failed(e)
       log_error(e.message)
+      return
     end
+
+    updates.each do |record|
+      apply_or_hold_pulled_record(direction, record, record[seq_key].to_i)
+      Config.where(config: seq_config).update(config_value: record[seq_key].to_i)
+    end
+  end
+
+  def apply_or_hold_pulled_record(direction, record, seq)
+    uuid = record['person_uuid']
+
+    ActiveRecord::Base.transaction { apply_pulled_record(record.deep_dup) }
+    # The person is now up to date: any older pulled version still on hold is obsolete.
+    SyncHold.pulls.where(person_uuid: uuid).delete_all
+    true
+  rescue StandardError => e
+    SyncHold.park!(direction, uuid, seq: seq, reason: e.message, payload: record)
+    log_error("Pull on hold (uuid #{uuid}, npid #{record['npid']}): #{e.message}")
+    false
+  end
+
+  def apply_pulled_record(record)
+    person_identifiers = record.delete('person_identifiers')
+    %w[id created_at updated_at update_seq].each { |key| record.delete(key) }
+
+    person = PersonDetail.unscoped.find_by(person_uuid: record['person_uuid'])
+
+    if person.blank?
+      if PersonDetail.unscoped.exists?(npid: record['npid'])
+        raise "Duplicate NPID detected (#{record['npid']}) for incoming UUID #{record['person_uuid']}"
+      end
+      if record['national_id'].present? && PersonDetail.unscoped.exists?(national_id: record['national_id'])
+        raise "Duplicate National ID detected (#{record['national_id']}) for incoming UUID #{record['person_uuid']}"
+      end
+
+      person = PersonDetail.create!(record)
+    else
+      person.update!(record)
+      audit_record = JSON.parse(person.to_json)
+      %w[id created_at updated_at update_seq].each { |key| audit_record.delete(key) }
+      PersonDetailsAudit.create!(audit_record)
+    end
+
+    PersonIdentifierService.sync(person, person_identifiers)
+  end
+
+  # Records parked by a pull are applied again from what the master sent. A newer version of the
+  # same person that went through since would already have removed the hold.
+  def retry_pull_holds
+    SyncHold.pulls.order(:last_attempt_at).limit(HOLD_RETRY_LIMIT).each do |hold|
+      record = hold.payload_hash
+      next hold.destroy if record.blank?
+
+      apply_or_hold_pulled_record(hold.direction, record, hold.seq)
+    end
+  end
+
+  # Records the master rejected are pushed again with resend=true (the master would otherwise
+  # skip them by its per-site tracker). Creations go first, so updates find their person.
+  # A network or server error stops the retries; they continue next sync.
+  def retry_push_holds
+    holds = SyncHold.pushes
+                    .order(Arel.sql("direction = 'push_update'"), :seq)
+                    .limit(HOLD_RETRY_LIMIT)
+
+    holds.each do |hold|
+      person = PersonDetail.unscoped.find_by(person_uuid: hold.person_uuid)
+      # Gone, or last changed at another site: the master only takes it from that site (511)
+      # and already has that newer version. Nothing left for this site to send.
+      next hold.destroy if person.nil? || person.location_updated_at != @location
+
+      endpoint = hold.direction == 'push_new' ? 'push_changes_new' : 'push_changes_updates'
+      payload = format_payload(person).merge(resend: true)
+      payload[:update_seq] = hold.seq if hold.direction == 'push_update'
+
+      break unless push_one(endpoint, payload, hold.direction, person, "retry #{hold.direction}")
+    end
+  end
+
+  # Once per proxy: people inactivated before their first push were rejected by masters older
+  # than this fix ("Person detail must exist") and skipped for good. Queue every voided person
+  # this site last changed (the same rule as push_records_new) and already behind the push
+  # marker; the master creates the missing ones and simply refreshes the others.
+  def queue_voided_resend_once
+    return if Config.exists?(config: VOIDED_RESEND_CONFIG)
+
+    push_seq = Config.find_by_config('push_seq_new')['config_value'].to_i
+    PersonDetail.unscoped
+                .where(voided: true, location_updated_at: @location)
+                .where('id <= ?', push_seq)
+                .find_each do |person|
+      next if SyncHold.exists?(direction: 'push_new', person_uuid: person.person_uuid)
+
+      SyncHold.park!('push_new', person.person_uuid, seq: person.id,
+                     reason: 'One-time resend of an inactivated person (F1 fix)')
+    end
+
+    Config.create!(config: VOIDED_RESEND_CONFIG, config_value: Time.current.iso8601,
+                   description: 'Voided people re-queued for push once (F1 sync fix)',
+                   uuid: SecureRandom.uuid)
   end
 
   def pull_npids
@@ -236,65 +294,71 @@ class SyncJob < ApplicationJob
   end
 
   def push_records_new
-    url = "#{@base_url}/push_changes_new"
-
     push_seq = Config.find_by_config('push_seq_new')['config_value'].to_i
 
     records_to_push = PersonDetail.unscoped.where('person_details.id > ? AND person_details.location_updated_at = ?',
                                                   push_seq, @location).order(:id).limit(100)
 
-    # The counter must only move past records the master dealt with, otherwise a later success
-    # would skip a failed record forever. A temporary failure (network, server error) stops the
-    # push so it is retried next sync. A rejection (422, e.g. unknown NPID) is permanent: it is
-    # recorded in sync_errors and the push carries on.
+    # The counter only moves past records the master dealt with. A temporary failure (network,
+    # server error) stops the push so it is retried next sync. A rejection (422) goes to the
+    # waiting room (SyncHold) and is retried every sync; the push carries on.
     records_to_push.each do |record|
-      what = "person #{record.id} (uuid #{record.person_uuid}, npid #{record.npid})"
-      begin
-        response = RestClient.post(url, format_payload(record), { Authorization: @token })
-        raise "Unexpected response #{response.code} pushing #{what}" unless response.code == 201
-      rescue RestClient::UnprocessableEntity => e
-        log_push_failure(e, what, skipped: true)
-      rescue StandardError => e
-        sync_failed(e)
-        log_push_failure(e, what)
-        break
-      end
+      break unless push_one('push_changes_new', format_payload(record), 'push_new', record,
+                            "person #{record.id}")
 
       Config.find_by_config('push_seq_new').update!(config_value: record.id.to_i)
     end
   end
 
   def push_records_updates
-    url = "#{@base_url}/push_changes_updates"
-
+    pushed_new_up_to = Config.find_by_config('push_seq_new')['config_value'].to_i
     push_seq = Config.find_by_config('push_seq_update')['config_value'].to_i
 
     records_to_push = PersonDetail.unscoped.joins(:person_details_audit).where('person_details.location_updated_at = ?
         AND person_details_audits.id > ?', @location, push_seq).order('person_details_audits.id').limit(100).select('person_details.*,person_details_audits.id as update_seq')
 
-    # Temporary failures stop the push, rejections (422) are recorded and skipped, see push_records_new
     records_to_push.each do |record|
-      what = "update #{record.update_seq} (uuid #{record.person_uuid}, npid #{record.npid})"
-      begin
-        response = RestClient.post(url, format_payload(record), { Authorization: @token })
-        raise "Unexpected response #{response.code} pushing #{what}" unless response.code == 201
-      rescue RestClient::UnprocessableEntity => e
-        log_push_failure(e, what, skipped: true)
-      rescue StandardError => e
-        sync_failed(e)
-        log_push_failure(e, what)
+      # The person's creation hasn't been pushed yet (the new-records push stopped on a network
+      # error or hit its batch limit). Sending the update now would only be rejected, so updates
+      # wait here, in order, for the next sync.
+      if record.id > pushed_new_up_to
+        Rails.logger.info("SyncJob: update #{record.update_seq} waits for person #{record.id} to be pushed first.")
         break
       end
+
+      break unless push_one('push_changes_updates', format_payload(record), 'push_update', record,
+                            "update #{record.update_seq}")
 
       Config.find_by_config('push_seq_update').update!(config_value: record.update_seq.to_i)
     end
   end
 
-  def log_push_failure(error, what, skipped: false)
+  # Pushes one record. Returns true when the master dealt with it (accepted, or rejected and put
+  # on hold) and false when the push has to stop (network or server error).
+  def push_one(endpoint, payload, direction, person, label)
+    what = "#{label} (uuid #{person.person_uuid}, npid #{person.npid})"
+    response = RestClient.post("#{@base_url}/#{endpoint}", payload, { Authorization: @token })
+    raise "Unexpected response #{response.code} pushing #{what}" unless response.code == 201
+
+    SyncHold.release!(direction, person.person_uuid)
+    true
+  rescue RestClient::UnprocessableEntity => e
+    SyncHold.park!(direction, person.person_uuid,
+                   seq: direction == 'push_update' ? payload[:update_seq] || person.try(:update_seq) : person.id,
+                   reason: [e.message, e.response&.body.presence].compact.join(': '))
+    log_push_failure(e, what, held: true)
+    true
+  rescue StandardError => e
+    sync_failed(e)
+    log_push_failure(e, what)
+    false
+  end
+
+  def log_push_failure(error, what, held: false)
     body = error.respond_to?(:response) ? error.response&.body : nil
     message = [error.message, body.presence].compact.join(': ')
     message = "#{what}: #{message}"
-    Rails.logger.error("PUSH #{skipped ? 'SKIPPED' : 'STOPPED'} at #{message}")
+    Rails.logger.error("PUSH #{held ? 'ON HOLD' : 'STOPPED'} at #{message}")
     log_error(message)
   end
 
@@ -447,24 +511,22 @@ class SyncJob < ApplicationJob
   def log_error(error)
     return if @location.blank? || error.to_s.blank?
 
-    existing_error = SyncError.find_by(site_id: @location, error: error.to_s)
+    message = error.to_s.truncate(SyncError::ERROR_MAX_LENGTH)
+    # An error not yet sent to the master is just refreshed. One already sent is logged again,
+    # so the master also hears that it happened again.
+    existing_error = SyncError.find_by(site_id: @location, error: message, synced: false)
 
     if existing_error
-      existing_error.update!(
-        incident_time: Time.now,
-        updated_at: Time.now
-      )
+      existing_error.update!(incident_time: Time.now, updated_at: Time.now)
     else
-      SyncError.create!(
-        site_id: @location,
-        incident_time: Time.now,
-        error: error.to_s
-      )
+      SyncError.create!(site_id: @location, incident_time: Time.now, error: message)
     end
   end
 
+  # Errors used to be wiped (TRUNCATE) at the start of every sync, including the ones never sent
+  # to the master. Now only errors already sent and older than a week are removed.
   def clear_errors
-    ActiveRecord::Base.connection.execute('TRUNCATE TABLE sync_errors;')
+    SyncError.where(synced: true).where('updated_at < ?', 7.days.ago).delete_all
   end
 
   def broadcast(message, level: :info)

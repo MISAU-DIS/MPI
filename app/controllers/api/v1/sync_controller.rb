@@ -133,6 +133,7 @@ module Api
                       :first_name_soundex,
                       :last_name_soundex,
                       :update_seq,
+                      :resend,
                       person_identifiers: [:type, :value])
       end
 

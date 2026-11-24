@@ -523,10 +523,13 @@ paths:
       description: 'Monitoring data for the proxy''s own location: the location
         itself, the local NPID lot (unassigned, assigned, allocated), NPIDs assigned
         per day over the last N days, the last sync with the master (last success,
-        last attempt and since when it has been failing) and the number of records
-        still to push to the master. A sync counts as successful when authentication,
-        every pull and every push completed without a connection or server error;
-        records the master rejects (422) do not fail the sync.'
+        last attempt and since when it has been failing), the number of records
+        still to push to the master and the records on hold (on_hold: total, pull,
+        push, oldest_since) — records that could not be applied or were rejected by
+        the master and are retried every sync. A sync counts as successful when
+        authentication, every pull and every push completed without a connection or
+        server error; records the master rejects (422) are put on hold and do not
+        fail the sync.'
       parameters:
       - name: days
         in: query
